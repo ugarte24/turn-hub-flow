@@ -4,16 +4,22 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import QRCode from "qrcode";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, CheckCircle2, Clock, RefreshCcw, XCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Clock, RefreshCcw, Star, XCircle } from "lucide-react";
 import { fetchAreas, fetchProcedures, type Area, type Procedure } from "@/lib/sigat-queries";
-import { cancelTicketByCi, findActiveTicketByCi, generateTicket } from "@/lib/sigat.functions";
+import {
+  cancelTicketByCi,
+  findActiveTicketByCi,
+  findRateableTicketByCi,
+  generateTicket,
+  submitTicketRating,
+} from "@/lib/sigat.functions";
 
 export const Route = createFileRoute("/ticket")({
   head: () => ({ meta: [{ title: "Sacar turno — SIGAT" }] }),
   component: TicketPage,
 });
 
-type Step = "ci" | "select" | "confirm" | "ticket" | "existing";
+type Step = "ci" | "select" | "confirm" | "ticket" | "existing" | "rate";
 type ActiveTicket = {
   id: string; code: string; ci: string; status: string;
   area?: Area | null; procedure?: Procedure | null;
@@ -35,14 +41,29 @@ function TicketPage() {
   });
 
   const findFn = useServerFn(findActiveTicketByCi);
+  const findRateFn = useServerFn(findRateableTicketByCi);
   const genFn = useServerFn(generateTicket);
   const cancelFn = useServerFn(cancelTicketByCi);
+  const rateFn = useServerFn(submitTicketRating);
 
   const checkCi = useMutation({
-    mutationFn: async (c: string) => findFn({ data: { ci: c } }),
+    mutationFn: async (c: string) => {
+      const active = await findFn({ data: { ci: c } });
+      if (active) return { kind: "active" as const, ticket: active };
+      const rateable = await findRateFn({ data: { ci: c } });
+      if (rateable) return { kind: "rate" as const, ticket: rateable };
+      return { kind: "none" as const, ticket: null };
+    },
     onSuccess: (data) => {
-      if (data) { setTicket(data as ActiveTicket); setStep("existing"); }
-      else setStep("select");
+      if (data.kind === "active") {
+        setTicket(data.ticket as ActiveTicket);
+        setStep("existing");
+      } else if (data.kind === "rate") {
+        setTicket(data.ticket as ActiveTicket);
+        setStep("rate");
+      } else {
+        setStep("select");
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -68,6 +89,19 @@ function TicketPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const rate = useMutation({
+    mutationFn: async (p: { score: number; comment: string }) =>
+      rateFn({ data: { ci, ticketId: ticket!.id, score: p.score, comment: p.comment || undefined } }),
+    onSuccess: () => {
+      toast.success("¡Gracias por tu calificación!");
+      setTicket(null);
+      setAreaId(null);
+      setProcedureId(null);
+      setStep("select");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const selectedArea = areas.data?.find((a) => a.id === areaId);
   const selectedProc = procs.data?.find((p) => p.id === procedureId);
 
@@ -87,6 +121,17 @@ function TicketPage() {
                 checkCi.mutate(ci.trim());
               }}
               loading={checkCi.isPending}
+            />
+          )}
+          {step === "rate" && ticket && (
+            <StepRate
+              t={ticket}
+              loading={rate.isPending}
+              onSkip={() => {
+                setTicket(null);
+                setStep("select");
+              }}
+              onSubmit={(score, comment) => rate.mutate({ score, comment })}
             />
           )}
           {step === "select" && (
@@ -138,6 +183,76 @@ function StepCi({ ci, setCi, onNext, loading }: { ci: string; setCi: (v: string)
       >
         {loading ? "Verificando..." : "Continuar"} <ArrowRight className="h-5 w-5" />
       </button>
+    </div>
+  );
+}
+
+function StepRate({
+  t, onSubmit, onSkip, loading,
+}: {
+  t: ActiveTicket;
+  onSubmit: (score: number, comment: string) => void;
+  onSkip: () => void;
+  loading: boolean;
+}) {
+  const [score, setScore] = useState(0);
+  const [hover, setHover] = useState(0);
+  const [comment, setComment] = useState("");
+  const active = hover || score;
+
+  return (
+    <div className="text-center">
+      <div className="inline-flex items-center gap-2 rounded-full bg-success/10 px-3 py-1 text-sm font-medium text-success">
+        <CheckCircle2 className="h-4 w-4" /> Atención finalizada
+      </div>
+      <h1 className="mt-4 text-2xl font-bold">¿Cómo fue la atención?</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Turno <span className="font-ticket font-bold text-primary">{t.code}</span>
+        {t.procedure?.name ? ` · ${t.procedure.name}` : ""}
+      </p>
+
+      <div className="mt-6 flex justify-center gap-1">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            aria-label={`${n} estrella${n > 1 ? "s" : ""}`}
+            onMouseEnter={() => setHover(n)}
+            onMouseLeave={() => setHover(0)}
+            onClick={() => setScore(n)}
+            className="rounded-lg p-1 transition hover:scale-110"
+          >
+            <Star
+              className={`h-10 w-10 ${active >= n ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40"}`}
+            />
+          </button>
+        ))}
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground">
+        {score === 0 ? "Selecciona de 1 a 5 estrellas" : score <= 2 ? "Mejorable" : score === 3 ? "Aceptable" : score === 4 ? "Buena" : "Excelente"}
+      </p>
+
+      <textarea
+        value={comment}
+        onChange={(e) => setComment(e.target.value.slice(0, 400))}
+        placeholder="Comentario opcional"
+        rows={3}
+        className="mt-5 w-full resize-none rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+      />
+
+      <div className="mt-5 flex flex-col gap-2">
+        <button
+          type="button"
+          disabled={score < 1 || loading}
+          onClick={() => onSubmit(score, comment.trim())}
+          className="rounded-xl bg-gradient-primary py-3.5 font-semibold text-primary-foreground shadow-elegant hover:brightness-105 disabled:opacity-50"
+        >
+          {loading ? "Enviando..." : "Enviar calificación"}
+        </button>
+        <button type="button" onClick={onSkip} className="rounded-xl border border-border py-3 text-sm font-medium hover:bg-accent">
+          Ahora no, sacar otro turno
+        </button>
+      </div>
     </div>
   );
 }

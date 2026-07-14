@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Save, Info, Upload, Film } from "lucide-react";
+import { Save, Info, Upload, Film, Download, Copy, QrCode } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/settings")({
   head: () => ({ meta: [{ title: "Configuración — SIGAT" }] }),
@@ -13,6 +14,7 @@ type Row = { key: string; value: Record<string, unknown> };
 export type VideoSource = "none" | "file" | "youtube" | "url" | "iframe";
 
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB
+const PUBLIC_APP_URL = "https://turn-hub-flow.vercel.app/";
 
 function SettingsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -28,6 +30,13 @@ function SettingsPage() {
   const [videoFileName, setVideoFileName] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState("");
+
+  useEffect(() => {
+    QRCode.toDataURL(PUBLIC_APP_URL, { width: 512, margin: 2, errorCorrectionLevel: "M" })
+      .then(setQrDataUrl)
+      .catch(() => toast.error("No se pudo generar el QR"));
+  }, []);
 
   useEffect(() => {
     supabase.from("settings").select("*").then(({ data }) => {
@@ -111,10 +120,27 @@ function SettingsPage() {
     toast.success("Configuración guardada");
   }
 
+  function downloadQr() {
+    if (!qrDataUrl) return;
+    const a = document.createElement("a");
+    a.href = qrDataUrl;
+    a.download = "sigat-qr.png";
+    a.click();
+  }
+
+  async function copyUrl() {
+    try {
+      await navigator.clipboard.writeText(PUBLIC_APP_URL);
+      toast.success("URL copiada");
+    } catch {
+      toast.error("No se pudo copiar la URL");
+    }
+  }
+
   return (
     <div className="p-6 md:p-10">
       <h1 className="text-3xl font-extrabold">Configuración</h1>
-      <p className="text-sm text-muted-foreground">Horarios, pantalla, video y sonidos</p>
+      <p className="text-sm text-muted-foreground">Horarios, pantalla, video, sonidos y QR de acceso</p>
 
       <div className="mt-6 grid gap-6 md:grid-cols-2">
         <Card title="Horario de atención">
@@ -227,6 +253,47 @@ function SettingsPage() {
             <Info className="mt-0.5 h-3.5 w-3.5" />
             La voz automática usa la síntesis de voz del navegador en la pantalla TV.
           </p>
+        </Card>
+
+        <Card title="QR de acceso">
+          <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+            <div className="shrink-0 rounded-xl border border-border bg-white p-3">
+              {qrDataUrl ? (
+                <img src={qrDataUrl} alt="QR SIGAT" className="h-44 w-44" />
+              ) : (
+                <div className="flex h-44 w-44 items-center justify-center text-muted-foreground">
+                  <QrCode className="h-10 w-10 animate-pulse" />
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1 space-y-3">
+              <p className="break-all text-sm font-medium text-primary">{PUBLIC_APP_URL}</p>
+              <p className="text-xs text-muted-foreground">
+                El contribuyente escanea este código para abrir SIGAT y sacar su turno.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={!qrDataUrl}
+                  onClick={downloadQr}
+                  className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-accent disabled:opacity-50"
+                >
+                  <Download className="h-4 w-4" /> Descargar PNG
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void copyUrl()}
+                  className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-accent"
+                >
+                  <Copy className="h-4 w-4" /> Copiar URL
+                </button>
+              </div>
+              <p className="flex items-start gap-2 rounded-lg bg-accent/50 p-3 text-xs text-muted-foreground">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                Imprime el PNG y colócalo en el mostrador o cartelería de atención.
+              </p>
+            </div>
+          </div>
         </Card>
       </div>
 

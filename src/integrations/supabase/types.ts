@@ -198,6 +198,38 @@ export type Database = {
         }
         Relationships: []
       }
+      ticket_ratings: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          score: number
+          ticket_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          score: number
+          ticket_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          score?: number
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_ratings_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: true
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tickets: {
         Row: {
           area_id: string
@@ -325,6 +357,27 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      submit_ticket_rating: {
+        Args: {
+          _ci: string
+          _comment?: string | null
+          _score: number
+          _ticket_id: string
+        }
+        Returns: {
+          comment: string | null
+          created_at: string
+          id: string
+          score: number
+          ticket_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ticket_ratings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {

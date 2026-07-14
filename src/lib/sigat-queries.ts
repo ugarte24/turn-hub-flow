@@ -46,3 +46,25 @@ export async function fetchTodayTickets() {
     .order("created_at", { ascending: false });
   return data ?? [];
 }
+
+export type TicketRatingRow = {
+  id: string;
+  ticket_id: string;
+  score: number;
+  comment: string | null;
+  created_at: string;
+  ticket?: { code: string; service_point?: { name: string } | null } | null;
+};
+
+export async function fetchTodayRatings() {
+  const today = todayLaPaz();
+  const { data: tickets } = await supabase.from("tickets").select("id").eq("day", today);
+  const ids = (tickets ?? []).map((t) => t.id);
+  if (!ids.length) return [] as TicketRatingRow[];
+  const { data } = await supabase
+    .from("ticket_ratings")
+    .select("*, ticket:tickets(code, service_point:service_points(name))")
+    .in("ticket_id", ids)
+    .order("created_at", { ascending: false });
+  return (data ?? []) as TicketRatingRow[];
+}

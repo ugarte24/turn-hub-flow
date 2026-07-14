@@ -66,6 +66,50 @@ export const findActiveTicketByCi = createServerFn({ method: "POST" })
     return t;
   });
 
+/** Latest finished ticket today that has not been rated yet. */
+export const findRateableTicketByCi = createServerFn({ method: "POST" })
+  .inputValidator((d: { ci: string }) => z.object({ ci: z.string().trim().min(4).max(20) }).parse(d))
+  .handler(async ({ data }) => {
+    const sb = publicClient();
+    const today = todayLaPaz();
+    const { data: finished } = await sb
+      .from("tickets")
+      .select("*, area:areas(*), procedure:procedures(*)")
+      .eq("ci", data.ci)
+      .eq("status", "finished")
+      .eq("day", today)
+      .order("finished_at", { ascending: false })
+      .limit(10);
+
+    if (!finished?.length) return null;
+
+    const ids = finished.map((t) => t.id);
+    const { data: rated } = await sb.from("ticket_ratings").select("ticket_id").in("ticket_id", ids);
+    const ratedIds = new Set((rated ?? []).map((r) => r.ticket_id));
+    return finished.find((t) => !ratedIds.has(t.id)) ?? null;
+  });
+
+export const submitTicketRating = createServerFn({ method: "POST" })
+  .inputValidator((d: { ci: string; ticketId: string; score: number; comment?: string }) =>
+    z.object({
+      ci: z.string().trim().min(4).max(20),
+      ticketId: z.string().uuid(),
+      score: z.number().int().min(1).max(5),
+      comment: z.string().trim().max(400).optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const sb = publicClient();
+    const { data: row, error } = await sb.rpc("submit_ticket_rating", {
+      _ci: data.ci,
+      _ticket_id: data.ticketId,
+      _score: data.score,
+      _comment: data.comment ?? null,
+    });
+    if (error) throw new Error(error.message);
+    return row;
+  });
+
 export const cancelTicketByCi = createServerFn({ method: "POST" })
   .inputValidator((d: { ci: string; ticketId: string }) =>
     z.object({ ci: z.string().trim().min(4).max(20), ticketId: z.string().uuid() }).parse(d),
