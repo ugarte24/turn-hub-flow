@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { todayLaPaz } from "@/lib/date";
 
 // Public server client (anon)
 function publicClient() {
@@ -38,7 +39,16 @@ export const generateTicket = createServerFn({ method: "POST" })
       _procedure_id: data.procedureId,
     });
     if (error) throw new Error(error.message);
-    return row as unknown as Record<string, string | number | boolean | null>;
+    const ticket = (Array.isArray(row) ? row[0] : row) as { id?: string } | null;
+    if (!ticket?.id) return row;
+
+    const { data: full, error: fetchError } = await sb
+      .from("tickets")
+      .select("*, area:areas(*), procedure:procedures(*)")
+      .eq("id", ticket.id)
+      .single();
+    if (fetchError) throw new Error(fetchError.message);
+    return full;
   });
 
 export const findActiveTicketByCi = createServerFn({ method: "POST" })
@@ -84,8 +94,7 @@ export const callNextTicket = createServerFn({ method: "POST" })
     const procIds = (sp ?? []).map((r) => r.procedure_id);
     if (procIds.length === 0) throw new Error("Este puesto no tiene trámites asignados");
 
-    const today = new Date(new Date().toLocaleString("en-US", { timeZone: "America/La_Paz" }))
-      .toISOString().slice(0, 10);
+    const today = todayLaPaz();
 
     const { data: next } = await supabase
       .from("tickets")
@@ -304,7 +313,7 @@ export const resetDailyCounters = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
     if (!isAdmin) throw new Error("Solo administradores");
-    const today = new Date(new Date().toLocaleString("en-US", { timeZone: "America/La_Paz" })).toISOString().slice(0, 10);
+    const today = todayLaPaz();
     await supabase.from("daily_counters").delete().eq("day", today);
     return { ok: true };
   });

@@ -50,7 +50,12 @@ function TicketPage() {
   const generate = useMutation({
     mutationFn: async () => genFn({ data: { ci, areaId: areaId!, procedureId: procedureId! } }),
     onSuccess: (data) => {
-      setTicket(data as unknown as ActiveTicket);
+      const row = data as ActiveTicket;
+      setTicket({
+        ...row,
+        area: row.area ?? areas.data?.find((a) => a.id === areaId) ?? null,
+        procedure: row.procedure ?? procs.data?.find((p) => p.id === procedureId) ?? null,
+      });
       setStep("ticket");
       toast.success("Ticket generado");
     },

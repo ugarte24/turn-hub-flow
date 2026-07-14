@@ -10,28 +10,39 @@ export const Route = createFileRoute("/_authenticated/admin/settings")({
 });
 
 type Row = { key: string; value: Record<string, unknown> };
+export type VideoSource = "none" | "youtube" | "url" | "iframe";
 
 function SettingsPage() {
-  const [rows, setRows] = useState<Row[]>([]);
   const [hoursStart, setHoursStart] = useState("08:30");
   const [hoursEnd, setHoursEnd] = useState("16:30");
   const [institution, setInstitution] = useState("Jefatura de Recaudaciones");
   const [subtitle, setSubtitle] = useState("Sistema Integral de Gestión de Atención por Turnos");
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [videoEnabled, setVideoEnabled] = useState(false);
+  const [videoSource, setVideoSource] = useState<VideoSource>("youtube");
+  const [videoUrl, setVideoUrl] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     supabase.from("settings").select("*").then(({ data }) => {
       const r = (data ?? []) as Row[];
-      setRows(r);
       const hours = r.find((x) => x.key === "working_hours")?.value as { start?: string; end?: string } | undefined;
-      const tv = r.find((x) => x.key === "tv_display")?.value as { institution?: string; subtitle?: string } | undefined;
+      const tv = r.find((x) => x.key === "tv_display")?.value as {
+        institution?: string;
+        subtitle?: string;
+        videoEnabled?: boolean;
+        videoSource?: VideoSource;
+        videoUrl?: string;
+      } | undefined;
       const sound = r.find((x) => x.key === "sound")?.value as { enabled?: boolean; voice?: boolean } | undefined;
       if (hours?.start) setHoursStart(hours.start);
       if (hours?.end) setHoursEnd(hours.end);
       if (tv?.institution) setInstitution(tv.institution);
       if (tv?.subtitle) setSubtitle(tv.subtitle);
+      if (typeof tv?.videoEnabled === "boolean") setVideoEnabled(tv.videoEnabled);
+      if (tv?.videoSource) setVideoSource(tv.videoSource);
+      if (tv?.videoUrl) setVideoUrl(tv.videoUrl);
       if (typeof sound?.enabled === "boolean") setSoundEnabled(sound.enabled);
       if (typeof sound?.voice === "boolean") setVoiceEnabled(sound.voice);
     });
@@ -41,7 +52,16 @@ function SettingsPage() {
     setLoading(true);
     const updates = [
       { key: "working_hours", value: { start: hoursStart, end: hoursEnd } },
-      { key: "tv_display", value: { institution, subtitle } },
+      {
+        key: "tv_display",
+        value: {
+          institution,
+          subtitle,
+          videoEnabled,
+          videoSource: videoEnabled ? videoSource : "none",
+          videoUrl: videoUrl.trim(),
+        },
+      },
       { key: "sound", value: { enabled: soundEnabled, voice: voiceEnabled } },
     ];
     const { error } = await supabase.from("settings").upsert(updates);
@@ -53,7 +73,7 @@ function SettingsPage() {
   return (
     <div className="p-6 md:p-10">
       <h1 className="text-3xl font-extrabold">Configuración</h1>
-      <p className="text-sm text-muted-foreground">Horarios, pantalla y sonidos</p>
+      <p className="text-sm text-muted-foreground">Horarios, pantalla, video y sonidos</p>
 
       <div className="mt-6 grid gap-6 md:grid-cols-2">
         <Card title="Horario de atención">
@@ -62,10 +82,53 @@ function SettingsPage() {
             <Field label="Fin"><input type="time" value={hoursEnd} onChange={(e) => setHoursEnd(e.target.value)} className="input" /></Field>
           </div>
         </Card>
-        <Card title="Pantalla TV">
+        <Card title="Pantalla TV — textos">
           <Field label="Institución"><input value={institution} onChange={(e) => setInstitution(e.target.value)} className="input" /></Field>
           <Field label="Subtítulo"><input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} className="input" /></Field>
         </Card>
+
+        <Card title="Pantalla TV — video">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={videoEnabled} onChange={(e) => setVideoEnabled(e.target.checked)} />
+            Mostrar video en la pantalla
+          </label>
+          {videoEnabled && (
+            <>
+              <Field label="Tipo de fuente">
+                <select
+                  value={videoSource}
+                  onChange={(e) => setVideoSource(e.target.value as VideoSource)}
+                  className="input"
+                >
+                  <option value="youtube">YouTube</option>
+                  <option value="url">Archivo de video (MP4 / WebM / URL directa)</option>
+                  <option value="iframe">Página web embebida (iframe)</option>
+                </select>
+              </Field>
+              <Field label={videoSource === "youtube" ? "URL de YouTube" : videoSource === "url" ? "URL del video" : "URL de la página"}>
+                <input
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  placeholder={
+                    videoSource === "youtube"
+                      ? "https://www.youtube.com/watch?v=... o https://youtu.be/..."
+                      : videoSource === "url"
+                        ? "https://ejemplo.com/video.mp4"
+                        : "https://ejemplo.com/pagina"
+                  }
+                  className="input"
+                />
+              </Field>
+              <p className="flex items-start gap-2 rounded-lg bg-accent/50 p-3 text-xs text-muted-foreground">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                {videoSource === "youtube" && "Se reproduce en bucle, sin sonido, para no interferir con el llamado de turnos."}
+                {videoSource === "url" && "Usa un enlace directo a un archivo .mp4 o .webm (público). También se reproduce muted y en bucle."}
+                {videoSource === "iframe" && "La página debe permitir embutirse (sin X-Frame-Options que lo bloquee)."}
+              </p>
+            </>
+          )}
+        </Card>
+
         <Card title="Sonido y voz">
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={soundEnabled} onChange={(e) => setSoundEnabled(e.target.checked)} /> Activar sonido

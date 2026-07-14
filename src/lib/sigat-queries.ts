@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { todayLaPaz } from "@/lib/date";
 
 export type Area = { id: string; code: string; name: string; active: boolean; sort_order: number };
 export type Procedure = { id: string; area_id: string; name: string; active: boolean; sort_order: number };
@@ -37,7 +38,7 @@ export async function fetchServicePointProcedures() {
   return data ?? [];
 }
 export async function fetchTodayTickets() {
-  const today = new Date(new Date().toLocaleString("en-US", { timeZone: "America/La_Paz" })).toISOString().slice(0, 10);
+  const today = todayLaPaz();
   const { data } = await supabase
     .from("tickets")
     .select("*, area:areas(*), procedure:procedures(*), service_point:service_points(*)")
