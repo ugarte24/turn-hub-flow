@@ -159,7 +159,7 @@ function DisplayPage() {
           </div>
           <div className="text-right">
             <p className="font-mono text-2xl font-extrabold leading-none text-primary-glow md:text-4xl">
-              {now.toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+              {now.toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}
             </p>
             <p className="mt-1 text-[11px] capitalize text-white/55 md:text-xs">
               {now.toLocaleDateString("es-BO", { weekday: "long", day: "2-digit", month: "long" })}
