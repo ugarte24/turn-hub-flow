@@ -158,7 +158,7 @@ function StepSelect({
           {areas.map((a) => (
             <button key={a.id} onClick={() => setAreaId(a.id)}
               className={`rounded-xl border px-3 py-3 text-sm font-semibold transition ${areaId === a.id ? "border-primary bg-primary text-primary-foreground shadow-elegant" : "border-border bg-background hover:border-primary/50"}`}>
-              <span className="mr-1 font-mono text-xs opacity-70">{a.code}</span>{a.name}
+              {a.name}
             </button>
           ))}
         </div>

@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Ticket, Monitor, ShieldCheck, Users2, ArrowRight, QrCode } from "lucide-react";
+import { APP_VERSION_LABEL } from "@/lib/version";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -88,7 +89,7 @@ function Landing() {
       </section>
 
       <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} Jefatura de Recaudaciones — SIGAT v1.0
+        © {new Date().getFullYear()} Jefatura de Recaudaciones — {APP_VERSION_LABEL}
       </footer>
     </div>
   );

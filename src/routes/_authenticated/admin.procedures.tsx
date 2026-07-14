@@ -49,10 +49,7 @@ function Page() {
       <div className="mt-6 grid gap-6 md:grid-cols-2">
         {(areas.data ?? []).map((a) => (
           <div key={a.id} className="rounded-2xl border border-border bg-card p-5">
-            <div className="flex items-baseline gap-2">
-              <span className="font-mono text-2xl font-black text-primary">{a.code}</span>
-              <h3 className="text-lg font-bold">{a.name}</h3>
-            </div>
+            <h3 className="text-lg font-bold">{a.name}</h3>
             <ul className="mt-3 divide-y divide-border">
               {(procs.data ?? []).filter((p) => p.area_id === a.id).map((p) => (
                 <li key={p.id} className="flex items-center justify-between py-2">

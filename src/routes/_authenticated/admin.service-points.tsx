@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { fetchAllProcedures, fetchServicePoints, fetchServicePointProcedures } from "@/lib/sigat-queries";
+import { fetchAllAreas, fetchAllProcedures, fetchServicePoints, fetchServicePointProcedures } from "@/lib/sigat-queries";
 import { deleteServicePoint, listOperators, upsertServicePoint } from "@/lib/sigat.functions";
 import { toast } from "sonner";
 import { Plus, Trash2, Save } from "lucide-react";
@@ -13,10 +13,13 @@ export const Route = createFileRoute("/_authenticated/admin/service-points")({
 });
 
 type SP = { id: string; name: string; active: boolean; operator_id: string | null };
+type AreaOpt = { id: string; name: string; sort_order: number };
+type ProcOpt = { id: string; area_id: string; name: string };
 
 function ServicePointsPage() {
   const qc = useQueryClient();
   const sps = useQuery({ queryKey: ["service_points"], queryFn: fetchServicePoints });
+  const areas = useQuery({ queryKey: ["all_areas"], queryFn: fetchAllAreas });
   const procs = useQuery({ queryKey: ["all_procs"], queryFn: fetchAllProcedures });
   const spp = useQuery({ queryKey: ["spp"], queryFn: fetchServicePointProcedures });
   const listFn = useServerFn(listOperators);
@@ -25,6 +28,9 @@ function ServicePointsPage() {
   const ops = useQuery({ queryKey: ["users"], queryFn: () => listFn() });
 
   const [editing, setEditing] = useState<SP | null>(null);
+
+  const areaName = (areaId: string) =>
+    (areas.data ?? []).find((a) => a.id === areaId)?.name ?? "Área";
 
   const upsert = useMutation({
     mutationFn: async (v: { id?: string; name: string; active: boolean; operatorId?: string | null; procedureIds: string[] }) =>
@@ -58,12 +64,20 @@ function ServicePointsPage() {
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         {(sps.data ?? []).map((sp) => {
           const pids = currentProcIds(sp.id);
+          const operator = ((ops.data as { id: string; full_name: string }[] | undefined) ?? [])
+            .find((o) => o.id === sp.operator_id);
           return (
             <div key={sp.id} className="rounded-2xl border border-border bg-card p-5">
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-lg font-bold">{sp.name}</h3>
                   <p className="text-xs text-muted-foreground">{sp.active ? "Activo" : "Inactivo"}</p>
+                  <p className="mt-1 text-sm">
+                    <span className="text-muted-foreground">Operador: </span>
+                    <span className="font-medium">
+                      {operator?.full_name?.trim() || (sp.operator_id ? "Sin nombre" : "Sin asignar")}
+                    </span>
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => setEditing(sp)} className="rounded-md border border-border px-3 py-1 text-xs hover:bg-accent">Editar</button>
@@ -74,7 +88,11 @@ function ServicePointsPage() {
               </div>
               <div className="mt-3 flex flex-wrap gap-1">
                 {(procs.data ?? []).filter((p) => pids.includes(p.id)).map((p) => (
-                  <span key={p.id} className="rounded-full bg-accent px-2 py-0.5 text-xs">{p.name}</span>
+                  <span key={p.id} className="rounded-full bg-accent px-2 py-0.5 text-xs">
+                    <span className="font-semibold">{areaName(p.area_id)}</span>
+                    <span className="text-muted-foreground"> · </span>
+                    {p.name}
+                  </span>
                 ))}
                 {pids.length === 0 && <span className="text-xs text-muted-foreground">Sin trámites asignados</span>}
               </div>
@@ -87,6 +105,7 @@ function ServicePointsPage() {
         <SPForm
           initial={editing}
           initialProcIds={currentProcIds(editing.id || undefined)}
+          areas={areas.data ?? []}
           procs={procs.data ?? []}
           operators={(ops.data as { id: string; full_name: string }[] | undefined) ?? []}
           onCancel={() => setEditing(null)}
@@ -99,10 +118,11 @@ function ServicePointsPage() {
 }
 
 function SPForm({
-  initial, initialProcIds, procs, operators, onCancel, onSave, loading,
+  initial, initialProcIds, areas, procs, operators, onCancel, onSave, loading,
 }: {
   initial: SP; initialProcIds: string[];
-  procs: { id: string; area_id: string; name: string }[];
+  areas: AreaOpt[];
+  procs: ProcOpt[];
   operators: { id: string; full_name: string }[];
   onCancel: () => void;
   onSave: (v: { name: string; active: boolean; operatorId: string | null; procedureIds: string[] }) => void;
@@ -112,6 +132,8 @@ function SPForm({
   const [active, setActive] = useState(initial.active);
   const [operatorId, setOperatorId] = useState<string | null>(initial.operator_id);
   const [pids, setPids] = useState<string[]>(initialProcIds);
+
+  const sortedAreas = [...areas].sort((a, b) => a.sort_order - b.sort_order);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -134,14 +156,34 @@ function SPForm({
           </label>
           <div>
             <label className="text-sm font-medium">Trámites atendidos</label>
-            <div className="mt-2 max-h-60 space-y-1 overflow-auto rounded-lg border border-border p-2">
-              {procs.map((p) => (
-                <label key={p.id} className="flex items-center gap-2 rounded px-2 py-1 hover:bg-accent">
-                  <input type="checkbox" checked={pids.includes(p.id)}
-                    onChange={(e) => setPids((prev) => e.target.checked ? [...prev, p.id] : prev.filter((x) => x !== p.id))} />
-                  <span className="text-sm">{p.name}</span>
-                </label>
-              ))}
+            <div className="mt-2 max-h-60 space-y-3 overflow-auto rounded-lg border border-border p-2">
+              {sortedAreas.map((area) => {
+                const areaProcs = procs.filter((p) => p.area_id === area.id);
+                if (areaProcs.length === 0) return null;
+                return (
+                  <div key={area.id}>
+                    <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {area.name}
+                    </p>
+                    <div className="space-y-1">
+                      {areaProcs.map((p) => (
+                        <label key={p.id} className="flex items-center gap-2 rounded px-2 py-1 hover:bg-accent">
+                          <input
+                            type="checkbox"
+                            checked={pids.includes(p.id)}
+                            onChange={(e) =>
+                              setPids((prev) =>
+                                e.target.checked ? [...prev, p.id] : prev.filter((x) => x !== p.id),
+                              )
+                            }
+                          />
+                          <span className="text-sm">{p.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
