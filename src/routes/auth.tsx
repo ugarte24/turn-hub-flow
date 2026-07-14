@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { LogIn, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Ingresar — SIGAT" }] }),
@@ -42,9 +42,7 @@ function AuthPage() {
         </Link>
         <div className="rounded-3xl border border-white/10 bg-card p-8 shadow-elegant">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-primary text-white">
-              <LogIn className="h-5 w-5" />
-            </div>
+            <img src="/sigat-icon.png" alt="SIGAT" className="h-11 w-11 rounded-xl shadow-elegant" />
             <div>
               <h1 className="text-xl font-bold">Acceso funcionarios</h1>
               <p className="text-sm text-muted-foreground">SIGAT — Panel interno</p>

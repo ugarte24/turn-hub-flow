@@ -51,7 +51,11 @@ function AuthLayout() {
     return (
       <nav className="flex-1 space-y-1 px-3">
         {nav.map((item) => {
-          const active = pathname === item.to || (item.to !== "/operator" && pathname.startsWith(item.to));
+          // /admin solo exacto; el resto respeta subrutas sin marcar a hermanos
+          const active =
+            item.to === "/admin"
+              ? pathname === "/admin" || pathname === "/admin/"
+              : pathname === item.to || pathname.startsWith(`${item.to}/`);
           return (
             <Link
               key={item.to}
@@ -75,9 +79,14 @@ function AuthLayout() {
     <div className="flex min-h-screen bg-background">
       <aside className="hidden w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground md:flex">
         <div className="px-6 py-6">
-          <p className="text-xs uppercase tracking-widest text-sidebar-foreground/60">Jefatura</p>
-          <h1 className="text-2xl font-extrabold text-primary-glow">SIGAT</h1>
-          <p className="mt-1 text-xs text-sidebar-foreground/50">{APP_VERSION_LABEL}</p>
+          <div className="flex items-center gap-3">
+            <img src="/sigat-icon.png" alt="SIGAT" className="h-11 w-11 rounded-xl shadow-elegant" />
+            <div>
+              <p className="text-xs uppercase tracking-widest text-sidebar-foreground/60">Jefatura</p>
+              <h1 className="text-2xl font-extrabold text-primary-glow">SIGAT</h1>
+              <p className="text-xs text-sidebar-foreground/50">{APP_VERSION_LABEL}</p>
+            </div>
+          </div>
         </div>
         <NavLinks />
         <div className="border-t border-sidebar-border p-4">
@@ -103,8 +112,13 @@ function AuthLayout() {
               </SheetTrigger>
               <SheetContent side="left" className="flex w-[min(100%,20rem)] flex-col bg-sidebar p-0 text-sidebar-foreground">
                 <SheetHeader className="border-b border-sidebar-border px-6 py-5 text-left">
-                  <SheetTitle className="text-2xl font-extrabold text-primary-glow">SIGAT</SheetTitle>
-                  <p className="text-xs text-sidebar-foreground/50">{APP_VERSION_LABEL}</p>
+                  <div className="flex items-center gap-3">
+                    <img src="/sigat-icon.png" alt="SIGAT" className="h-10 w-10 rounded-xl" />
+                    <div>
+                      <SheetTitle className="text-2xl font-extrabold text-primary-glow">SIGAT</SheetTitle>
+                      <p className="text-xs text-sidebar-foreground/50">{APP_VERSION_LABEL}</p>
+                    </div>
+                  </div>
                 </SheetHeader>
                 <div className="flex flex-1 flex-col py-3">
                   <NavLinks onNavigate={() => setMenuOpen(false)} />
@@ -120,7 +134,10 @@ function AuthLayout() {
                 </div>
               </SheetContent>
             </Sheet>
-            <span className="font-bold text-primary">SIGAT</span>
+            <span className="inline-flex items-center gap-2 font-bold text-primary">
+              <img src="/sigat-icon.png" alt="" className="h-7 w-7 rounded-md" />
+              SIGAT
+            </span>
           </div>
           <button onClick={signOut} className="text-sm text-muted-foreground">Salir</button>
         </header>

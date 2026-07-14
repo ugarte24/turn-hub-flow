@@ -13,8 +13,8 @@ function Landing() {
       <header className="relative overflow-hidden bg-gradient-hero text-white">
         <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_20%_20%,white_1px,transparent_1px),radial-gradient(circle_at_80%_60%,white_1px,transparent_1px)] [background-size:32px_32px,48px_48px]" />
         <div className="relative mx-auto max-w-6xl px-6 py-16 md:py-24">
-          <div className="flex items-center gap-2 text-sm font-medium uppercase tracking-widest text-white/80">
-            <span className="inline-block h-2 w-2 rounded-full bg-primary-glow shadow-glow" />
+          <div className="flex items-center gap-3 text-sm font-medium uppercase tracking-widest text-white/80">
+            <img src="/sigat-icon.png" alt="SIGAT" className="h-10 w-10 rounded-xl shadow-elegant" />
             Jefatura de Recaudaciones
           </div>
           <h1 className="mt-4 text-4xl font-extrabold leading-tight md:text-6xl">

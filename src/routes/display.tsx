@@ -20,7 +20,7 @@ type TvSettings = {
   institution: string;
   subtitle: string;
   videoEnabled: boolean;
-  videoSource: "none" | "youtube" | "url" | "iframe";
+  videoSource: "none" | "file" | "youtube" | "url" | "iframe";
   videoUrl: string;
   voiceEnabled: boolean;
 };
@@ -106,8 +106,13 @@ function DisplayPage() {
     <div className="flex min-h-screen flex-col bg-gradient-tv text-white">
       <header className="flex items-center justify-between border-b border-white/10 px-8 py-5">
         <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-white/60">{tv.institution}</p>
-          <h1 className="text-2xl font-bold md:text-3xl">{tv.subtitle || "SIGAT · Atención por turnos"}</h1>
+          <div className="flex items-center gap-3">
+            <img src="/sigat-icon.png" alt="SIGAT" className="h-12 w-12 rounded-2xl shadow-elegant" />
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-white/60">{tv.institution}</p>
+              <h1 className="text-2xl font-bold md:text-3xl">{tv.subtitle || "SIGAT · Atención por turnos"}</h1>
+            </div>
+          </div>
         </div>
         <div className="text-right">
           <p className="font-mono text-3xl font-extrabold text-primary-glow md:text-5xl">
@@ -195,7 +200,7 @@ function TvMedia({ source, url }: { source: TvSettings["videoSource"]; url: stri
     );
   }
 
-  if (source === "url") {
+  if (source === "url" || source === "file") {
     return (
       <video
         className="aspect-video w-full object-contain md:min-h-[40vh]"
