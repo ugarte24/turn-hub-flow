@@ -131,7 +131,7 @@ function DisplayPage() {
           </div>
           {current ? (
             <div className="mt-6">
-              <div className={`font-mono font-black leading-none text-primary-glow drop-shadow-[0_0_40px_rgba(61,190,139,0.5)] ${showVideo ? "text-7xl md:text-8xl" : "text-[10rem] md:text-[14rem]"}`}>
+              <div className={`font-ticket font-black leading-none text-primary-glow drop-shadow-[0_0_40px_rgba(61,190,139,0.5)] ${showVideo ? "text-7xl md:text-8xl" : "text-[10rem] md:text-[14rem]"}`}>
                 {current.code}
               </div>
               <div className="mt-4 flex flex-wrap gap-3">
@@ -157,7 +157,7 @@ function DisplayPage() {
             )}
             {upcoming.map((t) => (
               <li key={t.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-                <span className="font-mono text-2xl font-bold">{t.code}</span>
+                <span className="font-ticket text-2xl font-bold">{t.code}</span>
                 <span className="text-sm text-white/70">{t.procedure?.name}</span>
               </li>
             ))}
@@ -167,7 +167,7 @@ function DisplayPage() {
           <ul className="mt-3 space-y-2">
             {inService.map((t) => (
               <li key={t.id} className="flex items-center justify-between rounded-xl bg-white/5 px-4 py-2 text-sm">
-                <span className="font-mono font-bold">{t.code}</span>
+                <span className="font-ticket font-bold">{t.code}</span>
                 <span className="text-white/70">{t.service_point?.name}</span>
               </li>
             ))}

@@ -122,7 +122,7 @@ function OperatorPage() {
         <div className="mt-6 rounded-3xl border-2 border-primary/40 bg-gradient-to-b from-primary/5 to-transparent p-8">
           <div className="text-center">
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Ticket actual</p>
-            <p className="mt-2 font-mono text-7xl font-black text-primary">{myCalling.code}</p>
+            <p className="mt-2 font-ticket text-7xl font-black text-primary">{myCalling.code}</p>
             <div className="mt-3 flex flex-wrap justify-center gap-2 text-sm">
               <span className="rounded-full bg-accent px-3 py-1 font-medium">{myCalling.area?.name}</span>
               <span className="rounded-full bg-accent px-3 py-1 font-medium">{myCalling.procedure?.name}</span>
@@ -167,7 +167,7 @@ function OperatorPage() {
             <tbody>
               {((tickets.data as TicketRow[] | undefined) ?? []).slice(0, 20).map((t) => (
                 <tr key={t.id} className="border-t border-border">
-                  <td className="px-4 py-2 font-mono font-bold">{t.code}</td>
+                  <td className="px-4 py-2 font-ticket font-bold">{t.code}</td>
                   <td className="px-4 py-2">{t.procedure?.name}</td>
                   <td className="px-4 py-2"><StatusPill s={t.status} /></td>
                   <td className="px-4 py-2 text-muted-foreground">

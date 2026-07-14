@@ -237,7 +237,7 @@ function TicketView({ t, onDone }: { t: ActiveTicket; onDone: () => void }) {
       </div>
       <div className="mt-6 rounded-3xl border-2 border-dashed border-primary/40 bg-gradient-to-b from-primary/5 to-transparent p-6">
         <p className="text-xs uppercase tracking-widest text-muted-foreground">Tu número</p>
-        <div className="mt-2 font-mono text-6xl font-extrabold text-primary md:text-7xl">{t.code}</div>
+        <div className="mt-2 font-ticket text-6xl font-extrabold text-primary md:text-7xl">{t.code}</div>
         <div className="mt-4 grid grid-cols-2 gap-2 text-left text-sm">
           <div><p className="text-muted-foreground">Área</p><p className="font-semibold">{t.area?.name ?? "—"}</p></div>
           <div><p className="text-muted-foreground">Trámite</p><p className="font-semibold">{t.procedure?.name ?? "—"}</p></div>
@@ -267,7 +267,7 @@ function ExistingTicket({ t, onView, onCancel, loading }: { t: ActiveTicket; onV
       </div>
       <div className="mt-5 rounded-2xl border border-border bg-accent/40 p-5">
         <p className="text-xs text-muted-foreground">Turno</p>
-        <p className="font-mono text-4xl font-extrabold text-primary">{t.code}</p>
+        <p className="font-ticket text-4xl font-extrabold text-primary">{t.code}</p>
         <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
           <div><p className="text-muted-foreground">Estado</p><p className="font-semibold">{statusLabel}</p></div>
           <div><p className="text-muted-foreground">Trámite</p><p className="font-semibold">{t.procedure?.name ?? "—"}</p></div>
