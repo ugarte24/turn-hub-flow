@@ -38,7 +38,7 @@ export const generateTicket = createServerFn({ method: "POST" })
       _procedure_id: data.procedureId,
     });
     if (error) throw new Error(error.message);
-    return row as Record<string, unknown> | null;
+    return row as unknown as Record<string, string | number | boolean | null>;
   });
 
 export const findActiveTicketByCi = createServerFn({ method: "POST" })
@@ -125,7 +125,7 @@ export const updateTicketStatus = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const patch: Record<string, unknown> = { status: data.status };
+    const patch: { status: typeof data.status; started_at?: string; finished_at?: string } = { status: data.status };
     if (data.status === "in_service") patch.started_at = new Date().toISOString();
     if (data.status === "finished" || data.status === "absent" || data.status === "cancelled")
       patch.finished_at = new Date().toISOString();
