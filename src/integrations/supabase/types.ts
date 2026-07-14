@@ -14,16 +14,328 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      areas: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      daily_counters: {
+        Row: {
+          area_id: string
+          day: string
+          last_number: number
+        }
+        Insert: {
+          area_id: string
+          day: string
+          last_number?: number
+        }
+        Update: {
+          area_id?: string
+          day?: string
+          last_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_counters_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      procedures: {
+        Row: {
+          active: boolean
+          area_id: string
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          area_id: string
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          active?: boolean
+          area_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procedures_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          active: boolean
+          created_at: string
+          full_name: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          full_name?: string
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          full_name?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      service_point_procedures: {
+        Row: {
+          procedure_id: string
+          service_point_id: string
+        }
+        Insert: {
+          procedure_id: string
+          service_point_id: string
+        }
+        Update: {
+          procedure_id?: string
+          service_point_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_point_procedures_procedure_id_fkey"
+            columns: ["procedure_id"]
+            isOneToOne: false
+            referencedRelation: "procedures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_point_procedures_service_point_id_fkey"
+            columns: ["service_point_id"]
+            isOneToOne: false
+            referencedRelation: "service_points"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_points: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          operator_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          operator_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          operator_id?: string | null
+        }
+        Relationships: []
+      }
+      settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      tickets: {
+        Row: {
+          area_id: string
+          called_at: string | null
+          ci: string
+          code: string
+          created_at: string
+          day: string
+          finished_at: string | null
+          id: string
+          number: number
+          operator_id: string | null
+          procedure_id: string
+          service_point_id: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["ticket_status"]
+        }
+        Insert: {
+          area_id: string
+          called_at?: string | null
+          ci: string
+          code: string
+          created_at?: string
+          day?: string
+          finished_at?: string | null
+          id?: string
+          number: number
+          operator_id?: string | null
+          procedure_id: string
+          service_point_id?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["ticket_status"]
+        }
+        Update: {
+          area_id?: string
+          called_at?: string | null
+          ci?: string
+          code?: string
+          created_at?: string
+          day?: string
+          finished_at?: string | null
+          id?: string
+          number?: number
+          operator_id?: string | null
+          procedure_id?: string
+          service_point_id?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["ticket_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tickets_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_procedure_id_fkey"
+            columns: ["procedure_id"]
+            isOneToOne: false
+            referencedRelation: "procedures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_service_point_id_fkey"
+            columns: ["service_point_id"]
+            isOneToOne: false
+            referencedRelation: "service_points"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_ticket: {
+        Args: { _area_id: string; _ci: string; _procedure_id: string }
+        Returns: {
+          area_id: string
+          called_at: string | null
+          ci: string
+          code: string
+          created_at: string
+          day: string
+          finished_at: string | null
+          id: string
+          number: number
+          operator_id: string | null
+          procedure_id: string
+          service_point_id: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["ticket_status"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tickets"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "operator"
+      ticket_status:
+        | "waiting"
+        | "calling"
+        | "in_service"
+        | "finished"
+        | "absent"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +462,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "operator"],
+      ticket_status: [
+        "waiting",
+        "calling",
+        "in_service",
+        "finished",
+        "absent",
+        "cancelled",
+      ],
+    },
   },
 } as const
