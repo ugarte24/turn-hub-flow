@@ -38,7 +38,7 @@ export const generateTicket = createServerFn({ method: "POST" })
       _procedure_id: data.procedureId,
     });
     if (error) throw new Error(error.message);
-    return row as unknown;
+    return row as Record<string, unknown> | null;
   });
 
 export const findActiveTicketByCi = createServerFn({ method: "POST" })
