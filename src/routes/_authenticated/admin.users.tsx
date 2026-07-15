@@ -21,6 +21,7 @@ function UsersPage() {
   const delFn = useServerFn(deleteUser);
   const users = useQuery({ queryKey: ["users"], queryFn: () => listFn() });
   const [showForm, setShowForm] = useState(false);
+  const [formKey, setFormKey] = useState(0);
 
   const create = useMutation({
     mutationFn: async (v: { email: string; password: string; fullName: string; role: "admin" | "operator" }) =>
@@ -41,6 +42,11 @@ function UsersPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  function openNewUserForm() {
+    setFormKey((k) => k + 1);
+    setShowForm(true);
+  }
+
   return (
     <div className="p-6 md:p-10">
       <div className="flex items-center justify-between">
@@ -48,12 +54,16 @@ function UsersPage() {
           <h1 className="text-3xl font-extrabold">Usuarios</h1>
           <p className="text-sm text-muted-foreground">Operadores y administradores del sistema</p>
         </div>
-        <button onClick={() => setShowForm((v) => !v)} className="inline-flex items-center gap-2 rounded-full bg-gradient-primary px-4 py-2 text-primary-foreground shadow-elegant">
-          <UserPlus className="h-4 w-4" /> Nuevo usuario
+        <button
+          type="button"
+          onClick={() => (showForm ? setShowForm(false) : openNewUserForm())}
+          className="inline-flex items-center gap-2 rounded-full bg-gradient-primary px-4 py-2 text-primary-foreground shadow-elegant"
+        >
+          <UserPlus className="h-4 w-4" /> {showForm ? "Cerrar" : "Nuevo usuario"}
         </button>
       </div>
 
-      {showForm && <UserForm onSubmit={(v) => create.mutate(v)} loading={create.isPending} />}
+      {showForm && <UserForm key={formKey} onSubmit={(v) => create.mutate(v)} loading={create.isPending} />}
 
       <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-card">
         <table className="w-full text-sm">
@@ -102,13 +112,61 @@ function UserForm({ onSubmit, loading }: { onSubmit: (v: { email: string; passwo
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<"admin" | "operator">("operator");
+  const unlock = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.currentTarget.readOnly = false;
+  };
   return (
-    <form onSubmit={(e) => { e.preventDefault(); onSubmit({ email, password, fullName, role }); }} className="mt-6 grid gap-3 rounded-2xl border border-border bg-card p-5 md:grid-cols-2">
-      <Field label="Nombre completo"><input required value={fullName} onChange={(e) => setFullName(e.target.value)} className="input" /></Field>
-      <Field label="Correo"><input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input" /></Field>
-      <Field label="Contraseña"><input required type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} className="input" /></Field>
+    <form
+      autoComplete="off"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit({ email, password, fullName, role });
+      }}
+      className="mt-6 grid gap-3 rounded-2xl border border-border bg-card p-5 md:grid-cols-2"
+    >
+      {/* Señuelos: evitan que el navegador rellene con la sesión del admin */}
+      <input type="text" name="username" autoComplete="username" tabIndex={-1} aria-hidden className="pointer-events-none absolute h-0 w-0 opacity-0" defaultValue="" readOnly />
+      <input type="password" name="password" autoComplete="current-password" tabIndex={-1} aria-hidden className="pointer-events-none absolute h-0 w-0 opacity-0" defaultValue="" readOnly />
+
+      <Field label="Nombre completo">
+        <input
+          required
+          name="new-user-fullname"
+          autoComplete="off"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          className="input"
+        />
+      </Field>
+      <Field label="Correo">
+        <input
+          required
+          type="email"
+          name="new-user-email"
+          autoComplete="off"
+          readOnly
+          onFocus={unlock}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="input"
+        />
+      </Field>
+      <Field label="Contraseña">
+        <input
+          required
+          type="password"
+          name="new-user-password"
+          autoComplete="new-password"
+          minLength={6}
+          readOnly
+          onFocus={unlock}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="input"
+        />
+      </Field>
       <Field label="Rol">
-        <select value={role} onChange={(e) => setRole(e.target.value as "admin" | "operator")} className="input">
+        <select value={role} onChange={(e) => setRole(e.target.value as "admin" | "operator")} className="input" autoComplete="off">
           <option value="operator">Operador</option>
           <option value="admin">Administrador</option>
         </select>

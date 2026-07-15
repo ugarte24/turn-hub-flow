@@ -316,6 +316,69 @@ export const bootstrapFirstAdmin = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- ADMIN: areas ----------
+export const upsertArea = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id?: string; code: string; name: string; active: boolean }) =>
+    z.object({
+      id: z.string().uuid().optional(),
+      code: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{1,3}$/, "Código de 1 a 3 letras/números"),
+      name: z.string().trim().min(2).max(120),
+      active: z.boolean(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+    if (!isAdmin) throw new Error("Solo administradores");
+
+    const { data: dup } = await supabase
+      .from("areas")
+      .select("id")
+      .eq("code", data.code)
+      .maybeSingle();
+    if (dup && dup.id !== data.id) throw new Error(`Ya existe un área con código ${data.code}`);
+
+    if (data.id) {
+      const { error } = await supabase.from("areas").update({
+        code: data.code, name: data.name, active: data.active,
+      }).eq("id", data.id);
+      if (error) throw new Error(error.message);
+    } else {
+      const { data: last } = await supabase
+        .from("areas")
+        .select("sort_order")
+        .order("sort_order", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const sort_order = (last?.sort_order ?? 0) + 1;
+      const { error } = await supabase.from("areas").insert({
+        code: data.code, name: data.name, active: data.active, sort_order,
+      });
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true };
+  });
+
+export const deleteArea = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+    if (!isAdmin) throw new Error("Solo administradores");
+    const { count } = await supabase
+      .from("tickets")
+      .select("*", { count: "exact", head: true })
+      .eq("area_id", data.id);
+    if ((count ?? 0) > 0) {
+      throw new Error("No se puede eliminar: hay tickets asociados. Desactiva el área en su lugar.");
+    }
+    const { error } = await supabase.from("areas").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 // ---------- ADMIN: procedures ----------
 export const upsertProcedure = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
