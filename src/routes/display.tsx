@@ -124,7 +124,7 @@ function DisplayPage() {
           `${formatTicketCode(item.t.code)}, pasar a ${item.t.service_point?.name ?? "atención"}`,
         );
         msg.lang = "es-ES";
-        msg.rate = 1.08;
+        msg.rate = 0.95;
         speechSynthesis.speak(msg);
       } catch { /* ignore */ }
     }
