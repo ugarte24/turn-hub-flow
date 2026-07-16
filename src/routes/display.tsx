@@ -189,12 +189,16 @@ function DisplayPage() {
               {attending.map((t) => {
                 const isCalling = t.status === "calling";
                 const big = attending.length <= 2;
+                const calledMs = t.called_at ? new Date(t.called_at).getTime() : 0;
+                const isAnimating = isCalling && calledMs > 0 && now.getTime() - calledMs < 6000;
                 return (
                   <li
                     key={t.id}
                     className={`flex flex-col justify-center rounded-2xl border px-4 py-5 md:px-5 md:py-6 ${
                       isCalling
-                        ? "border-primary-glow/40 bg-primary/15 shadow-[0_0_30px_rgba(61,190,139,0.25)]"
+                        ? isAnimating
+                          ? "border-primary-glow/70 bg-primary/25 animate-tv-call-burst"
+                          : "border-primary-glow/40 bg-primary/15 shadow-[0_0_30px_rgba(61,190,139,0.25)]"
                         : "border-white/10 bg-white/5"
                     }`}
                   >
@@ -203,7 +207,7 @@ function DisplayPage() {
                         big
                           ? "text-[clamp(3rem,12vh,7rem)]"
                           : "text-[clamp(2rem,6vh,4rem)]"
-                      }`}
+                      } ${isAnimating ? "animate-tv-call-code-burst" : ""}`}
                     >
                       {t.code}
                     </span>
@@ -214,11 +218,6 @@ function DisplayPage() {
                     >
                       {t.service_point?.name ?? "—"}
                     </span>
-                    {isCalling && (
-                      <span className="mt-2 text-[10px] uppercase tracking-widest text-primary-glow md:text-xs">
-                        Llamando
-                      </span>
-                    )}
                   </li>
                 );
               })}
