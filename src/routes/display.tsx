@@ -171,7 +171,6 @@ function DisplayPage() {
                     className="flex flex-col justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2.5"
                   >
                     <span className="font-ticket text-2xl font-bold md:text-3xl">{formatTicketCode(t.code)}</span>
-                    <span className="truncate text-xs text-white/70 md:text-sm">{t.procedure?.name}</span>
                   </li>
                 ))}
               </ul>
@@ -203,12 +202,8 @@ function DisplayPage() {
             </div>
           ) : (
             <ul
-              className={`min-h-0 flex-1 gap-3 overflow-y-auto ${
-                attending.length === 1
-                  ? "grid grid-cols-1 content-center"
-                  : attending.length === 2
-                    ? "grid grid-cols-1 content-center md:grid-cols-1"
-                    : "grid grid-cols-1 content-start sm:grid-cols-2"
+              className={`min-h-0 flex-1 gap-3 overflow-y-auto grid grid-cols-1 ${
+                attending.length <= 2 ? "content-center" : "content-start"
               }`}
             >
               {attending.map((t) => {
@@ -219,7 +214,7 @@ function DisplayPage() {
                 return (
                   <li
                     key={t.id}
-                    className={`flex flex-col justify-center rounded-2xl border px-4 py-5 md:px-5 md:py-6 ${
+                    className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-4 md:px-5 md:py-5 ${
                       isCalling
                         ? isAnimating
                           ? "border-primary-glow/70 bg-primary/25 animate-tv-call-burst"
@@ -228,17 +223,17 @@ function DisplayPage() {
                     }`}
                   >
                     <span
-                      className={`font-ticket font-black leading-none text-primary-glow ${
+                      className={`shrink-0 font-ticket font-black leading-none text-primary-glow ${
                         big
-                          ? "text-[clamp(3rem,12vh,7rem)]"
-                          : "text-[clamp(2rem,6vh,4rem)]"
+                          ? "text-[clamp(2.5rem,8vh,5rem)]"
+                          : "text-[clamp(2rem,5vh,3.5rem)]"
                       } ${isAnimating ? "animate-tv-call-code-burst" : ""}`}
                     >
                       {formatTicketCode(t.code)}
                     </span>
                     <span
-                      className={`mt-3 truncate font-semibold uppercase tracking-wide text-white/85 ${
-                        big ? "text-base md:text-xl" : "text-sm md:text-base"
+                      className={`min-w-0 truncate text-right font-semibold uppercase tracking-wide text-white/85 ${
+                        big ? "text-sm md:text-lg" : "text-xs md:text-sm"
                       }`}
                     >
                       {t.service_point?.name ?? "—"}
