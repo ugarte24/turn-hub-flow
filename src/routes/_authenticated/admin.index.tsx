@@ -7,6 +7,7 @@ import { fetchServicePoints, fetchTodayRatings, fetchTodayTickets } from "@/lib/
 import { resetDailyCounters } from "@/lib/sigat.functions";
 import { Ticket, Users2, Clock, CheckCircle2, UserX, TrendingUp, RotateCcw, Star } from "lucide-react";
 import { toast } from "sonner";
+import { formatTicketCode } from "@/lib/ticket-code";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
   head: () => ({ meta: [{ title: "Dashboard — SIGAT" }] }),
@@ -158,7 +159,7 @@ function AdminDashboard() {
             {ratingList.slice(0, 12).map((r) => (
               <li key={r.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
                 <div className="min-w-0">
-                  <p className="font-ticket text-sm font-bold">{r.ticket?.code ?? "—"}</p>
+                  <p className="font-ticket text-sm font-bold">{formatTicketCode(r.ticket?.code)}</p>
                   <p className="text-xs text-muted-foreground">
                     {r.ticket?.service_point?.name ?? "Sin puesto"} ·{" "}
                     {new Date(r.created_at).toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit", hour12: false })}

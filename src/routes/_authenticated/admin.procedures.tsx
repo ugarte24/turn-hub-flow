@@ -158,7 +158,7 @@ function Page() {
                   maxLength={3}
                   className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 font-ticket tracking-widest"
                 />
-                <p className="mt-1 text-xs text-muted-foreground">1 a 3 caracteres. Generará tickets como {editingArea.code || "X"}-001.</p>
+                <p className="mt-1 text-xs text-muted-foreground">1 a 3 caracteres. Generará tickets como {editingArea.code || "X"}-1.</p>
               </div>
               <label className="flex items-center gap-2 text-sm">
                 <input

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchTodayTickets } from "@/lib/sigat-queries";
+import { formatTicketCode } from "@/lib/ticket-code";
 import { Volume2 } from "lucide-react";
 
 export const Route = createFileRoute("/display")({
@@ -120,10 +121,10 @@ function DisplayPage() {
       announcedKeys.current.add(item.key);
       try {
         const msg = new SpeechSynthesisUtterance(
-          `Turno ${spellCode(item.t.code)}, favor pasar a ${item.t.service_point?.name ?? "atención"}`,
+          `${formatTicketCode(item.t.code)}, pasar a ${item.t.service_point?.name ?? "atención"}`,
         );
         msg.lang = "es-ES";
-        msg.rate = 0.95;
+        msg.rate = 1.08;
         speechSynthesis.speak(msg);
       } catch { /* ignore */ }
     }
@@ -169,7 +170,7 @@ function DisplayPage() {
                     key={t.id}
                     className="flex flex-col justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2.5"
                   >
-                    <span className="font-ticket text-2xl font-bold md:text-3xl">{t.code}</span>
+                    <span className="font-ticket text-2xl font-bold md:text-3xl">{formatTicketCode(t.code)}</span>
                     <span className="truncate text-xs text-white/70 md:text-sm">{t.procedure?.name}</span>
                   </li>
                 ))}
@@ -233,7 +234,7 @@ function DisplayPage() {
                           : "text-[clamp(2rem,6vh,4rem)]"
                       } ${isAnimating ? "animate-tv-call-code-burst" : ""}`}
                     >
-                      {t.code}
+                      {formatTicketCode(t.code)}
                     </span>
                     <span
                       className={`mt-3 truncate font-semibold uppercase tracking-wide text-white/85 ${
@@ -326,10 +327,4 @@ function extractYoutubeId(input: string): string | null {
     return null;
   }
   return null;
-}
-
-function spellCode(code: string) {
-  const letters: Record<string, string> = { V: "Vehículo", I: "Inmueble", A: "Actividades", T: "Tasas" };
-  const [l, n] = code.split("-");
-  return `${letters[l] ?? l} ${parseInt(n, 10)}`;
 }
