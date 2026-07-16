@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchTodayTickets } from "@/lib/sigat-queries";
 import { Volume2 } from "lucide-react";
@@ -37,7 +37,7 @@ const defaultTv: TvSettings = {
 function DisplayPage() {
   const [tickets, setTickets] = useState<TicketRow[]>([]);
   const [now, setNow] = useState(new Date());
-  const [lastAnnounced, setLastAnnounced] = useState<string | null>(null);
+  const announcedKeys = useRef(new Set<string>());
   const [tv, setTv] = useState<TvSettings>(defaultTv);
 
   useEffect(() => {
@@ -87,23 +87,47 @@ function DisplayPage() {
   const upcoming = tickets.filter((t) => t.status === "waiting").slice(-6).reverse();
 
   useEffect(() => {
-    if (!tv.voiceEnabled || !calling.length) return;
-    const latest = calling[0];
-    if (!latest) return;
-    // Incluye called_at para que "Repetir llamado" vuelva a anunciar el mismo ticket
-    const key = `${latest.id}:${latest.called_at ?? ""}`;
-    if (key === lastAnnounced) return;
-    setLastAnnounced(key);
-    try {
-      const msg = new SpeechSynthesisUtterance(
-        `Turno ${spellCode(latest.code)}, favor pasar a ${latest.service_point?.name ?? "atención"}`,
-      );
-      msg.lang = "es-ES";
-      msg.rate = 0.95;
-      speechSynthesis.cancel();
-      speechSynthesis.speak(msg);
-    } catch { /* ignore */ }
-  }, [calling, lastAnnounced, tv.voiceEnabled]);
+    if (!tv.voiceEnabled) return;
+
+    const nowMs = Date.now();
+    const FRESH_MS = 20_000;
+    const pending: { t: TicketRow; key: string; at: number }[] = [];
+
+    for (const t of calling) {
+      if (!t.called_at) continue;
+      const key = `${t.id}:${t.called_at}`;
+      if (announcedKeys.current.has(key)) continue;
+      const at = new Date(t.called_at).getTime();
+      // Al cargar la TV, no re-anuncia llamados antiguos
+      if (nowMs - at > FRESH_MS) {
+        announcedKeys.current.add(key);
+        continue;
+      }
+      pending.push({ t, key, at });
+    }
+
+    // Limpia claves de turnos que ya no están llamando
+    const live = new Set(calling.map((t) => `${t.id}:${t.called_at ?? ""}`));
+    for (const k of [...announcedKeys.current]) {
+      if (!live.has(k)) announcedKeys.current.delete(k);
+    }
+
+    if (!pending.length) return;
+
+    pending.sort((a, b) => a.at - b.at);
+    speechSynthesis.cancel();
+    for (const item of pending) {
+      announcedKeys.current.add(item.key);
+      try {
+        const msg = new SpeechSynthesisUtterance(
+          `Turno ${spellCode(item.t.code)}, favor pasar a ${item.t.service_point?.name ?? "atención"}`,
+        );
+        msg.lang = "es-ES";
+        msg.rate = 0.95;
+        speechSynthesis.speak(msg);
+      } catch { /* ignore */ }
+    }
+  }, [calling, tv.voiceEnabled]);
 
   return (
     <div className="grid h-screen max-h-screen grid-cols-1 overflow-hidden bg-gradient-tv text-white md:grid-cols-[1.55fr_1fr]">
