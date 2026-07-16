@@ -67,7 +67,10 @@ function OperatorPage() {
   const doUpdate = useMutation({
     mutationFn: async (p: { id: string; status: "calling" | "in_service" | "finished" | "absent" | "cancelled" }) =>
       upFn({ data: { ticketId: p.id, status: p.status } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["today_tickets"] }),
+    onSuccess: (_t, p) => {
+      qc.invalidateQueries({ queryKey: ["today_tickets"] });
+      if (p.status === "calling") toast.success("Llamado repetido en pantalla TV");
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 

@@ -89,8 +89,11 @@ function DisplayPage() {
   useEffect(() => {
     if (!tv.voiceEnabled || !calling.length) return;
     const latest = calling[0];
-    if (!latest || latest.id === lastAnnounced) return;
-    setLastAnnounced(latest.id);
+    if (!latest) return;
+    // Incluye called_at para que "Repetir llamado" vuelva a anunciar el mismo ticket
+    const key = `${latest.id}:${latest.called_at ?? ""}`;
+    if (key === lastAnnounced) return;
+    setLastAnnounced(key);
     try {
       const msg = new SpeechSynthesisUtterance(
         `Turno ${spellCode(latest.code)}, favor pasar a ${latest.service_point?.name ?? "atención"}`,

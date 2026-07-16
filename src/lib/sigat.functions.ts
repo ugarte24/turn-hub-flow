@@ -178,7 +178,14 @@ export const updateTicketStatus = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const patch: { status: typeof data.status; started_at?: string; finished_at?: string } = { status: data.status };
+    const patch: {
+      status: typeof data.status;
+      started_at?: string;
+      finished_at?: string;
+      called_at?: string;
+    } = { status: data.status };
+    // Repetir llamado / re-llamar: refresca called_at para que la TV anuncie de nuevo
+    if (data.status === "calling") patch.called_at = new Date().toISOString();
     if (data.status === "in_service") patch.started_at = new Date().toISOString();
     if (data.status === "finished" || data.status === "absent" || data.status === "cancelled")
       patch.finished_at = new Date().toISOString();
