@@ -82,10 +82,13 @@ function DisplayPage() {
 
   const calling = tickets.filter((t) => t.status === "calling");
   const inService = tickets.filter((t) => t.status === "in_service");
-  // Llamando primero, luego en atención; solo número + puesto/operador en pantalla
-  const attending = [...calling, ...inService];
+  // Llamando (más reciente arriba), luego en atención
+  const callingSorted = [...calling].sort(
+    (a, b) => new Date(b.called_at ?? 0).getTime() - new Date(a.called_at ?? 0).getTime(),
+  );
+  const attending = [...callingSorted, ...inService];
   const showVideo = tv.videoEnabled && tv.videoUrl.trim().length > 0 && tv.videoSource !== "none";
-  const upcoming = tickets.filter((t) => t.status === "waiting").slice(-6).reverse();
+  const upcoming = tickets.filter((t) => t.status === "waiting").slice(-10).reverse();
 
   useEffect(() => {
     if (!tv.voiceEnabled) return;
@@ -134,16 +137,16 @@ function DisplayPage() {
     <div className="grid h-screen max-h-screen grid-cols-1 overflow-hidden bg-gradient-tv text-white md:grid-cols-[1.55fr_1fr]">
       {/* Izquierda: cabecera + video horizontal + pie */}
       <section className="flex min-h-0 flex-col border-b border-white/10 md:border-b-0 md:border-r md:border-white/10">
-        <header className="flex shrink-0 items-center gap-4 border-b border-white/10 bg-white/5 px-5 py-4 md:px-6 md:py-5">
-          <img src="/sigat-icon.png" alt="SIGAT" className="h-16 w-16 shrink-0 rounded-2xl md:h-20 md:w-20" />
+        <header className="flex shrink-0 items-center gap-3 border-b border-white/10 bg-white/5 px-4 py-2.5 md:px-5 md:py-3">
+          <img src="/sigat-icon.png" alt="SIGAT" className="h-11 w-11 shrink-0 rounded-xl md:h-14 md:w-14" />
           <div className="min-w-0">
-            <p className="text-xl font-extrabold uppercase tracking-[0.2em] text-primary-glow md:text-3xl lg:text-4xl">
+            <p className="text-lg font-extrabold uppercase tracking-[0.18em] text-primary-glow md:text-2xl lg:text-3xl">
               {tv.institution || "Jefatura de Recaudaciones"}
             </p>
           </div>
         </header>
 
-        <div className="flex min-h-0 flex-[1.15] items-center justify-center bg-black/20 p-3 md:p-4">
+        <div className="flex min-h-0 flex-1 items-center justify-center bg-black/20 p-2 md:p-3">
           {showVideo ? (
             <div className="aspect-video w-full max-h-full overflow-hidden rounded-2xl border border-white/10 bg-black shadow-elegant">
               <TvMedia source={tv.videoSource} url={tv.videoUrl} />
@@ -156,21 +159,19 @@ function DisplayPage() {
           )}
         </div>
 
-        <div className="flex min-h-0 flex-[0.75] flex-col overflow-hidden border-t border-white/10 bg-white/5 p-3 md:p-4">
-          <h2 className="shrink-0 text-xs uppercase tracking-widest text-primary-glow md:text-sm">Siguientes turnos</h2>
-          <div className="mt-2 min-h-0 flex-1 overflow-y-auto">
+        <div className="flex shrink-0 flex-col border-t border-white/10 bg-white/5 px-3 py-2 md:px-4 md:py-2.5">
+          <h2 className="shrink-0 text-[10px] uppercase tracking-widest text-primary-glow md:text-xs">Siguientes turnos</h2>
+          <div className="mt-1.5">
             {upcoming.length === 0 ? (
-              <div className="flex h-full items-center justify-center rounded-xl border border-white/10 px-3 py-4 text-sm text-white/50">
-                No hay turnos en espera
-              </div>
+              <p className="text-sm text-white/50">No hay turnos en espera</p>
             ) : (
-              <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              <ul className="flex flex-wrap gap-2">
                 {upcoming.map((t) => (
                   <li
                     key={t.id}
-                    className="flex flex-col justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2.5"
+                    className="rounded-lg border border-white/15 bg-white/10 px-3 py-1.5"
                   >
-                    <span className="font-ticket text-2xl font-bold md:text-3xl">{formatTicketCode(t.code)}</span>
+                    <span className="font-ticket text-2xl font-bold leading-none md:text-3xl">{formatTicketCode(t.code)}</span>
                   </li>
                 ))}
               </ul>
@@ -180,62 +181,51 @@ function DisplayPage() {
       </section>
 
       {/* Derecha: reloj + todos los turnos en atención */}
-      <section className="flex min-h-0 flex-col gap-3 overflow-hidden p-4 md:gap-4 md:p-5">
-        <div className="flex shrink-0 items-start justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-primary-glow md:text-sm">
-            <Volume2 className="h-4 w-4" /> Turnos en atención
+      <section className="flex min-h-0 flex-col gap-2 overflow-hidden p-3 md:gap-3 md:p-4">
+        <div className="flex shrink-0 items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-primary-glow md:text-xs">
+            <Volume2 className="h-3.5 w-3.5" /> Turnos en atención
           </div>
           <div className="text-right">
-            <p className="font-mono text-2xl font-extrabold leading-none text-primary-glow md:text-4xl">
+            <p className="font-mono text-xl font-extrabold leading-none text-primary-glow md:text-2xl">
               {now.toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}
             </p>
-            <p className="mt-1 text-[11px] capitalize text-white/55 md:text-xs">
+            <p className="mt-0.5 text-[10px] capitalize text-white/50 md:text-[11px]">
               {now.toLocaleDateString("es-BO", { weekday: "long", day: "2-digit", month: "long" })}
             </p>
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-3 md:rounded-3xl md:p-4">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-2 md:p-3">
           {attending.length === 0 ? (
             <div className="flex flex-1 items-center justify-center">
               <p className="text-center text-xl text-white/50 md:text-2xl">Sin turnos en atención</p>
             </div>
           ) : (
-            <ul
-              className={`min-h-0 flex-1 gap-3 overflow-y-auto grid grid-cols-1 ${
-                attending.length <= 2 ? "content-center" : "content-start"
-              }`}
-            >
+            <ul className="grid min-h-0 flex-1 grid-cols-1 content-start gap-2 overflow-y-auto">
               {attending.map((t) => {
                 const isCalling = t.status === "calling";
-                const big = attending.length <= 2;
                 const calledMs = t.called_at ? new Date(t.called_at).getTime() : 0;
                 const isAnimating = isCalling && calledMs > 0 && now.getTime() - calledMs < 6000;
                 return (
                   <li
                     key={t.id}
-                    className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-4 md:px-5 md:py-5 ${
+                    className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 md:px-4 md:py-3 ${
                       isCalling
                         ? isAnimating
                           ? "border-primary-glow/70 bg-primary/25 animate-tv-call-burst"
-                          : "border-primary-glow/40 bg-primary/15 shadow-[0_0_30px_rgba(61,190,139,0.25)]"
+                          : "border-primary-glow/40 bg-primary/15 shadow-[0_0_24px_rgba(61,190,139,0.25)]"
                         : "border-white/10 bg-white/5"
                     }`}
                   >
                     <span
-                      className={`shrink-0 font-ticket font-black leading-none text-primary-glow ${
-                        big
-                          ? "text-[clamp(2.5rem,8vh,5rem)]"
-                          : "text-[clamp(2rem,5vh,3.5rem)]"
-                      } ${isAnimating ? "animate-tv-call-code-burst" : ""}`}
+                      className={`shrink-0 font-ticket text-[clamp(2.5rem,6vh,4rem)] font-black leading-none text-primary-glow ${
+                        isAnimating ? "animate-tv-call-code-burst" : ""
+                      }`}
                     >
                       {formatTicketCode(t.code)}
                     </span>
-                    <span
-                      className={`min-w-0 truncate text-right font-semibold uppercase tracking-wide text-white/85 ${
-                        big ? "text-sm md:text-lg" : "text-xs md:text-sm"
-                      }`}
-                    >
+                    <span className="min-w-0 truncate text-right text-sm font-semibold uppercase tracking-wide text-white/85 md:text-base">
                       {t.service_point?.name ?? "—"}
                     </span>
                   </li>

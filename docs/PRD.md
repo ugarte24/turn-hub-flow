@@ -2,7 +2,7 @@
 
 **Producto:** SIGAT — Sistema Integral de Gestión de Atención por Turnos  
 **Institución:** Jefatura de Recaudaciones  
-**Versión del sistema:** `1.0.17` (auto — ver `package.json`)
+**Versión del sistema:** `1.0.18` (auto — ver `package.json`)
 **Repositorio:** `turn-hub-flow`  
 **Fecha de este documento:** 2026-07-13  
 **Estado:** MVP en producción local / listo para despliegue
