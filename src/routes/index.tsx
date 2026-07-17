@@ -1,95 +1,63 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Ticket, Monitor, ShieldCheck, Users2, ArrowRight, QrCode } from "lucide-react";
+import { Clock, Monitor, ArrowRight } from "lucide-react";
 import { APP_VERSION_LABEL } from "@/lib/version";
 
 export const Route = createFileRoute("/")({
-  component: Landing,
+  head: () => ({ meta: [{ title: "Sacar turno — SIGAT" }] }),
+  component: CitizenLanding,
 });
 
-function Landing() {
+function CitizenLanding() {
   return (
-    <div className="min-h-screen bg-background">
-      {/* HERO */}
+    <div className="min-h-dvh bg-background pb-[env(safe-area-inset-bottom)]">
       <header className="relative overflow-hidden bg-gradient-hero text-white">
         <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_20%_20%,white_1px,transparent_1px),radial-gradient(circle_at_80%_60%,white_1px,transparent_1px)] [background-size:32px_32px,48px_48px]" />
-        <div className="relative mx-auto max-w-6xl px-6 py-16 md:py-24">
-          <div className="flex items-center gap-3 text-sm font-medium uppercase tracking-widest text-white/80">
-            <img src="/sigat-icon.png" alt="SIGAT" className="h-10 w-10 rounded-xl shadow-elegant" />
-            Jefatura de Recaudaciones
-          </div>
-          <h1 className="mt-4 text-4xl font-extrabold leading-tight md:text-6xl">
-            SIGAT
-            <span className="block text-primary-glow">Gestión de Atención por Turnos</span>
-          </h1>
-          <p className="mt-5 max-w-2xl text-lg text-white/85">
-            Organiza la atención de contribuyentes por trámite y puesto. Sin filas,
-            sin confusión: cada turno al funcionario que corresponde.
+        <div className="absolute left-5 top-[max(1.25rem,env(safe-area-inset-top))] z-10 flex items-center gap-2.5 text-[11px] font-medium uppercase tracking-widest text-white/80 md:left-6 md:top-6 md:gap-3 md:text-sm">
+          <img src="/sigat-icon.png" alt="SIGAT" className="h-9 w-9 rounded-xl shadow-elegant md:h-10 md:w-10" />
+          Jefatura de Recaudaciones
+        </div>
+        <div className="relative mx-auto flex min-h-[100dvh] max-w-6xl flex-col items-center justify-center px-5 py-10 text-center md:min-h-[72vh] md:items-start md:px-6 md:py-20 md:text-left">
+          <p className="max-w-md text-base leading-snug text-white/85 md:max-w-xl md:text-xl">
+            Sacá tu turno con tu CI y esperá el llamado en pantalla. Sin filas, sin confusión.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-7 w-full max-w-md md:mt-10 md:max-w-none">
             <Link
               to="/ticket"
-              className="inline-flex items-center gap-2 rounded-full bg-primary-glow px-6 py-3 font-semibold text-primary shadow-elegant transition hover:brightness-105"
+              className="animate-cta-attract inline-flex w-full items-center justify-center gap-3 rounded-full bg-gradient-to-r from-primary-glow via-white to-primary-glow px-8 py-5 text-xl font-extrabold uppercase tracking-wide text-primary shadow-elegant transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/40 md:w-auto md:px-10 md:py-5 md:text-xl"
             >
-              <QrCode className="h-5 w-5" /> Sacar turno
+              Sacar turno
             </Link>
-            <Link
-              to="/display"
-              className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-6 py-3 font-semibold text-white backdrop-blur transition hover:bg-white/20"
-            >
-              <Monitor className="h-5 w-5" /> Pantalla TV
-            </Link>
-            <Link
-              to="/auth"
-              className="inline-flex items-center gap-2 rounded-full border border-white/20 px-6 py-3 font-semibold text-white/90 transition hover:bg-white/10"
-            >
-              Ingresar <ArrowRight className="h-4 w-4" />
-            </Link>
+            <p className="mt-3 text-sm text-white/70 md:mt-4">Tocá el botón para comenzar</p>
           </div>
         </div>
       </header>
 
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        <div className="grid gap-6 md:grid-cols-3">
-          {[
-            { icon: Ticket, title: "Tickets por QR", desc: "El contribuyente escanea el QR, ingresa su CI y elige el trámite." },
-            { icon: Users2, title: "Puestos dinámicos", desc: "Cada trámite se dirige automáticamente al puesto correspondiente." },
-            { icon: Monitor, title: "Pantalla en vivo", desc: "Los llamados se muestran con sonido y voz automática." },
-          ].map(({ icon: Icon, title, desc }) => (
-            <div key={title} className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-primary text-white shadow-elegant">
-                <Icon className="h-5 w-5" />
-              </div>
-              <h3 className="mt-4 text-lg font-semibold">{title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-6xl px-6 pb-20">
-        <div className="rounded-3xl border border-border bg-gradient-primary p-8 text-white shadow-elegant md:p-12">
-          <div className="flex flex-wrap items-center justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-2 text-sm uppercase tracking-widest text-white/70">
-                <ShieldCheck className="h-4 w-4" /> Panel institucional
-              </div>
-              <h2 className="mt-2 text-2xl font-bold md:text-3xl">Acceso para funcionarios</h2>
-              <p className="mt-2 max-w-xl text-white/85">
-                Operadores y administradores acceden a su panel para llamar turnos, configurar puestos y ver reportes en tiempo real.
-              </p>
-            </div>
-            <Link
-              to="/auth"
-              className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 font-semibold text-primary shadow-elegant transition hover:bg-white/90"
-            >
-              Iniciar sesión <ArrowRight className="h-4 w-4" />
-            </Link>
+      <section className="mx-auto max-w-6xl px-5 py-8 md:px-6 md:py-14">
+        <div className="grid gap-4 md:grid-cols-2 md:gap-6">
+          <div className="rounded-2xl border border-border bg-card p-4 md:p-6">
+            <Clock className="h-7 w-7 text-primary md:h-8 md:w-8" />
+            <h2 className="mt-3 text-lg font-bold md:mt-4 md:text-xl">¿Cómo funciona?</h2>
+            <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-sm text-muted-foreground md:mt-3 md:space-y-2">
+              <li>Ingresá tu número de CI.</li>
+              <li>Elegí el área y el trámite.</li>
+              <li>Esperá tu llamado en la pantalla TV.</li>
+            </ol>
+          </div>
+          <div className="rounded-2xl border border-border bg-card p-4 md:p-6">
+            <Monitor className="h-7 w-7 text-primary md:h-8 md:w-8" />
+            <h2 className="mt-3 text-lg font-bold md:mt-4 md:text-xl">En la sala de espera</h2>
+            <p className="mt-2 text-sm text-muted-foreground md:mt-3">
+              Prestá atención a la pantalla y al anuncio de voz. Cuando salga tu número, acercate al puesto indicado.
+            </p>
           </div>
         </div>
       </section>
 
-      <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} Jefatura de Recaudaciones — {APP_VERSION_LABEL}
+      <footer className="border-t border-border px-5 py-6 text-center text-sm text-muted-foreground md:py-8">
+        <p>© {new Date().getFullYear()} Jefatura de Recaudaciones — {APP_VERSION_LABEL}</p>
+        <Link to="/staff" className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground/80 hover:text-foreground md:mt-3">
+          Acceso funcionarios <ArrowRight className="h-3 w-3" />
+        </Link>
       </footer>
     </div>
   );

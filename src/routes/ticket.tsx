@@ -107,13 +107,20 @@ function TicketPage() {
   const selectedProc = procs.data?.find((p) => p.id === procedureId);
 
   return (
-    <div className="min-h-screen bg-gradient-hero px-4 py-6">
-      <div className="mx-auto max-w-lg">
-        <Link to="/" className="mb-4 inline-flex items-center gap-2 text-sm text-white/80 hover:text-white">
-          <ArrowLeft className="h-4 w-4" /> Inicio
-        </Link>
+    <div className="relative min-h-dvh bg-gradient-hero px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))]">
+      <div className="pointer-events-none absolute inset-0 opacity-15 [background-image:radial-gradient(circle_at_20%_20%,white_1px,transparent_1px),radial-gradient(circle_at_80%_60%,white_1px,transparent_1px)] [background-size:32px_32px,48px_48px]" />
+      <div className="relative mx-auto max-w-lg">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <Link to="/" className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-sm text-white/90 backdrop-blur-sm transition hover:bg-white/15 hover:text-white">
+            <ArrowLeft className="h-4 w-4" /> Inicio
+          </Link>
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-white/70">
+            <img src="/sigat-icon.png" alt="" className="h-7 w-7 rounded-lg" />
+            SIGAT
+          </div>
+        </div>
 
-        <div className="rounded-3xl bg-card p-6 shadow-elegant md:p-8">
+        <div className="rounded-3xl border border-white/10 bg-card p-5 shadow-elegant md:p-8">
           {step === "ci" && (
             <StepCi
               ci={ci} setCi={setCi}
@@ -137,8 +144,10 @@ function TicketPage() {
           )}
           {step === "select" && (
             <StepSelect
+              ci={ci}
               areas={areas.data ?? []}
               procs={procs.data ?? []}
+              procsLoading={procs.isFetching}
               areaId={areaId} setAreaId={(v) => { setAreaId(v); setProcedureId(null); }}
               procedureId={procedureId} setProcedureId={setProcedureId}
               onBack={() => setStep("ci")}
@@ -169,18 +178,19 @@ function TicketPage() {
 function StepCi({ ci, setCi, onNext, loading }: { ci: string; setCi: (v: string) => void; onNext: () => void; loading: boolean }) {
   return (
     <div>
-      <h1 className="text-2xl font-bold">Ingresa tu CI</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Necesitamos tu número de carnet para generar el turno.</p>
+      <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Paso 1 de 3</p>
+      <h1 className="mt-1 text-2xl font-bold tracking-tight">Ingresá tu CI</h1>
+      <p className="mt-1.5 text-sm text-muted-foreground">Con tu carnet generamos y vinculamos tu turno.</p>
       <input
         autoFocus inputMode="numeric" value={ci}
         onChange={(e) => setCi(e.target.value.replace(/[^0-9A-Za-z-]/g, ""))}
         onKeyDown={(e) => e.key === "Enter" && onNext()}
         placeholder="12345678"
-        className="mt-6 w-full rounded-xl border border-input bg-background px-4 py-4 text-center text-2xl font-mono tracking-widest outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+        className="mt-6 w-full rounded-2xl border border-input bg-background px-4 py-4 text-center text-2xl font-mono tracking-widest outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
       />
       <button
         onClick={onNext} disabled={loading}
-        className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-primary py-3.5 text-lg font-semibold text-primary-foreground shadow-elegant transition hover:brightness-105 disabled:opacity-50"
+        className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-primary py-3.5 text-lg font-semibold text-primary-foreground shadow-elegant transition hover:brightness-105 disabled:opacity-50"
       >
         {loading ? "Verificando..." : "Continuar"} <ArrowRight className="h-5 w-5" />
       </button>
@@ -259,47 +269,109 @@ function StepRate({
 }
 
 function StepSelect({
-  areas, procs, areaId, setAreaId, procedureId, setProcedureId, onBack, onNext,
+  ci, areas, procs, procsLoading, areaId, setAreaId, procedureId, setProcedureId, onBack, onNext,
 }: {
-  areas: Area[]; procs: Procedure[];
+  ci: string;
+  areas: Area[]; procs: Procedure[]; procsLoading: boolean;
   areaId: string | null; setAreaId: (v: string) => void;
   procedureId: string | null; setProcedureId: (v: string) => void;
   onBack: () => void; onNext: () => void;
 }) {
+  const canContinue = !!areaId && !!procedureId;
+
   return (
     <div>
-      <button onClick={onBack} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition hover:text-foreground"
+      >
         <ArrowLeft className="h-4 w-4" /> Cambiar CI
       </button>
-      <h1 className="mt-2 text-2xl font-bold">Selecciona el trámite</h1>
 
-      <div className="mt-6">
-        <label className="text-sm font-medium">Área</label>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          {areas.map((a) => (
-            <button key={a.id} onClick={() => setAreaId(a.id)}
-              className={`rounded-xl border px-3 py-3 text-sm font-semibold transition ${areaId === a.id ? "border-primary bg-primary text-primary-foreground shadow-elegant" : "border-border bg-background hover:border-primary/50"}`}>
-              {a.name}
-            </button>
-          ))}
-        </div>
-      </div>
+      <p className="mt-4 text-xs font-medium uppercase tracking-widest text-muted-foreground">Paso 2 de 3</p>
+      <h1 className="mt-1 text-2xl font-bold tracking-tight">¿Qué trámite necesitás?</h1>
+      <p className="mt-1.5 text-sm text-muted-foreground">
+        CI <span className="font-mono font-semibold text-foreground">{ci}</span>
+      </p>
 
-      {areaId && (
-        <div className="mt-5">
-          <label className="text-sm font-medium">Trámite</label>
-          <div className="mt-2 flex flex-col gap-2">
-            {procs.map((p) => (
-              <button key={p.id} onClick={() => setProcedureId(p.id)}
-                className={`rounded-xl border px-4 py-3 text-left text-sm font-medium transition ${procedureId === p.id ? "border-primary bg-accent" : "border-border bg-background hover:border-primary/40"}`}>
-                {p.name}
+      <section className="mt-6">
+        <h2 className="text-sm font-semibold">1. Elegí el área</h2>
+        <div className="mt-3 grid grid-cols-2 gap-2.5">
+          {areas.map((a) => {
+            const selected = areaId === a.id;
+            return (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => setAreaId(a.id)}
+                className={`flex items-center gap-3 rounded-2xl border-2 px-3.5 py-3.5 text-left transition ${
+                  selected
+                    ? "border-primary bg-primary text-primary-foreground shadow-elegant"
+                    : "border-border bg-background hover:border-primary/40 hover:bg-accent/40"
+                }`}
+              >
+                <span className="min-w-0 flex-1 text-sm font-semibold leading-snug">{a.name}</span>
+                {selected && <CheckCircle2 className="h-5 w-5 shrink-0 opacity-90" />}
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
-      )}
+      </section>
 
-      <button onClick={onNext} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-primary py-3.5 text-lg font-semibold text-primary-foreground shadow-elegant hover:brightness-105">
+      <section className="mt-6">
+        <h2 className="text-sm font-semibold">2. Elegí el trámite</h2>
+        {!areaId ? (
+          <p className="mt-3 rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">
+            Primero seleccioná un área para ver los trámites.
+          </p>
+        ) : procsLoading ? (
+          <p className="mt-3 rounded-2xl border border-border bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">
+            Cargando trámites…
+          </p>
+        ) : procs.length === 0 ? (
+          <p className="mt-3 rounded-2xl border border-border bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">
+            No hay trámites activos en esta área.
+          </p>
+        ) : (
+          <div className="mt-3 flex flex-col gap-2">
+            {procs.map((p) => {
+              const selected = procedureId === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setProcedureId(p.id)}
+                  className={`flex items-center gap-3 rounded-2xl border-2 px-4 py-3.5 text-left transition ${
+                    selected
+                      ? "border-primary bg-primary/10 shadow-sm"
+                      : "border-border bg-background hover:border-primary/35 hover:bg-accent/30"
+                  }`}
+                >
+                  <span
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                      selected ? "border-primary bg-primary" : "border-muted-foreground/35"
+                    }`}
+                  >
+                    {selected && <span className="h-2 w-2 rounded-full bg-primary-foreground" />}
+                  </span>
+                  <span className={`flex-1 text-sm font-medium leading-snug ${selected ? "text-foreground" : "text-foreground/90"}`}>
+                    {p.name}
+                  </span>
+                  {selected && <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <button
+        type="button"
+        onClick={onNext}
+        disabled={!canContinue}
+        className="mt-7 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-primary py-3.5 text-lg font-semibold text-primary-foreground shadow-elegant transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
+      >
         Continuar <ArrowRight className="h-5 w-5" />
       </button>
     </div>
@@ -310,19 +382,26 @@ function StepConfirm({ ci, area, proc, onBack, onConfirm, loading }: { ci: strin
   const now = new Date();
   return (
     <div>
-      <h1 className="text-2xl font-bold">Confirma tu turno</h1>
-      <dl className="mt-6 divide-y divide-border rounded-2xl border border-border">
+      <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Paso 3 de 3</p>
+      <h1 className="mt-1 text-2xl font-bold tracking-tight">Confirmá tu turno</h1>
+      <p className="mt-1.5 text-sm text-muted-foreground">Revisá los datos antes de generar el número.</p>
+      <dl className="mt-6 overflow-hidden divide-y divide-border rounded-2xl border border-border bg-muted/20">
         <Row label="CI" value={ci} />
-        <Row label="Área" value={area.name} />
+        <Row label="Área" value={`${area.code} · ${area.name}`} />
         <Row label="Trámite" value={proc.name} />
         <Row label="Fecha" value={now.toLocaleDateString("es-BO")} />
         <Row label="Hora" value={now.toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit" })} />
       </dl>
       <div className="mt-6 flex flex-col gap-2">
-        <button onClick={onConfirm} disabled={loading} className="rounded-xl bg-gradient-primary py-3.5 font-semibold text-primary-foreground shadow-elegant hover:brightness-105 disabled:opacity-50">
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={loading}
+          className="rounded-2xl bg-gradient-primary py-3.5 font-semibold text-primary-foreground shadow-elegant hover:brightness-105 disabled:opacity-50"
+        >
           {loading ? "Generando..." : "Confirmar y generar ticket"}
         </button>
-        <button onClick={onBack} className="rounded-xl border border-border py-3 font-medium hover:bg-accent">
+        <button type="button" onClick={onBack} className="rounded-2xl border border-border py-3 font-medium hover:bg-accent">
           Cambiar trámite
         </button>
       </div>

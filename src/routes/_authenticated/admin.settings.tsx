@@ -14,7 +14,8 @@ type Row = { key: string; value: Record<string, unknown> };
 export type VideoSource = "none" | "file" | "youtube" | "url" | "iframe";
 
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB
-const PUBLIC_APP_URL = "https://turn-hub-flow.vercel.app/";
+const CITIZEN_QR_URL = "https://turn-hub-flow.vercel.app/ticket";
+const STAFF_URL = "https://turn-hub-flow.vercel.app/staff";
 
 function SettingsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -33,7 +34,7 @@ function SettingsPage() {
   const [qrDataUrl, setQrDataUrl] = useState("");
 
   useEffect(() => {
-    QRCode.toDataURL(PUBLIC_APP_URL, { width: 512, margin: 2, errorCorrectionLevel: "M" })
+    QRCode.toDataURL(CITIZEN_QR_URL, { width: 512, margin: 2, errorCorrectionLevel: "M" })
       .then(setQrDataUrl)
       .catch(() => toast.error("No se pudo generar el QR"));
   }, []);
@@ -130,8 +131,17 @@ function SettingsPage() {
 
   async function copyUrl() {
     try {
-      await navigator.clipboard.writeText(PUBLIC_APP_URL);
+      await navigator.clipboard.writeText(CITIZEN_QR_URL);
       toast.success("URL copiada");
+    } catch {
+      toast.error("No se pudo copiar la URL");
+    }
+  }
+
+  async function copyStaffUrl() {
+    try {
+      await navigator.clipboard.writeText(STAFF_URL);
+      toast.success("URL de funcionarios copiada");
     } catch {
       toast.error("No se pudo copiar la URL");
     }
@@ -267,9 +277,9 @@ function SettingsPage() {
               )}
             </div>
             <div className="min-w-0 flex-1 space-y-3">
-              <p className="break-all text-sm font-medium text-primary">{PUBLIC_APP_URL}</p>
+              <p className="break-all text-sm font-medium text-primary">{CITIZEN_QR_URL}</p>
               <p className="text-xs text-muted-foreground">
-                El contribuyente escanea este código para abrir SIGAT y sacar su turno.
+                El contribuyente escanea este código y va directo a sacar turno.
               </p>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -285,9 +295,19 @@ function SettingsPage() {
                   onClick={() => void copyUrl()}
                   className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-accent"
                 >
-                  <Copy className="h-4 w-4" /> Copiar URL
+                  <Copy className="h-4 w-4" /> Copiar URL turno
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void copyStaffUrl()}
+                  className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-accent"
+                >
+                  <Copy className="h-4 w-4" /> Copiar URL funcionarios
                 </button>
               </div>
+              <p className="break-all text-xs text-muted-foreground">
+                Funcionarios: <span className="font-medium text-foreground">{STAFF_URL}</span>
+              </p>
               <p className="flex items-start gap-2 rounded-lg bg-accent/50 p-3 text-xs text-muted-foreground">
                 <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 Imprime el PNG y colócalo en el mostrador o cartelería de atención.

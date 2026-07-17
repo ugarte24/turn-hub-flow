@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TicketRouteImport } from './routes/ticket'
+import { Route as StaffRouteImport } from './routes/staff'
 import { Route as DisplayRouteImport } from './routes/display'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -25,6 +26,11 @@ import { Route as AuthenticatedAdminProceduresRouteImport } from './routes/_auth
 const TicketRoute = TicketRouteImport.update({
   id: '/ticket',
   path: '/ticket',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StaffRoute = StaffRouteImport.update({
+  id: '/staff',
+  path: '/staff',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DisplayRoute = DisplayRouteImport.update({
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/display': typeof DisplayRoute
+  '/staff': typeof StaffRoute
   '/ticket': typeof TicketRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/operator': typeof AuthenticatedOperatorRoute
@@ -102,6 +109,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/display': typeof DisplayRoute
+  '/staff': typeof StaffRoute
   '/ticket': typeof TicketRoute
   '/operator': typeof AuthenticatedOperatorRoute
   '/admin/procedures': typeof AuthenticatedAdminProceduresRoute
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/display': typeof DisplayRoute
+  '/staff': typeof StaffRoute
   '/ticket': typeof TicketRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/operator': typeof AuthenticatedOperatorRoute
@@ -131,6 +140,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/display'
+    | '/staff'
     | '/ticket'
     | '/admin'
     | '/operator'
@@ -144,6 +154,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/display'
+    | '/staff'
     | '/ticket'
     | '/operator'
     | '/admin/procedures'
@@ -157,6 +168,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/display'
+    | '/staff'
     | '/ticket'
     | '/_authenticated/admin'
     | '/_authenticated/operator'
@@ -172,6 +184,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   DisplayRoute: typeof DisplayRoute
+  StaffRoute: typeof StaffRoute
   TicketRoute: typeof TicketRoute
 }
 
@@ -182,6 +195,13 @@ declare module '@tanstack/react-router' {
       path: '/ticket'
       fullPath: '/ticket'
       preLoaderRoute: typeof TicketRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/staff': {
+      id: '/staff'
+      path: '/staff'
+      fullPath: '/staff'
+      preLoaderRoute: typeof StaffRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/display': {
@@ -301,6 +321,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   DisplayRoute: DisplayRoute,
+  StaffRoute: StaffRoute,
   TicketRoute: TicketRoute,
 }
 export const routeTree = rootRouteImport

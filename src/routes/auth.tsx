@@ -37,8 +37,8 @@ function AuthPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-hero p-6">
       <div className="w-full max-w-md">
-        <Link to="/" className="mb-6 inline-flex items-center gap-2 text-sm text-white/80 hover:text-white">
-          <ArrowLeft className="h-4 w-4" /> Volver al inicio
+        <Link to="/staff" className="mb-6 inline-flex items-center gap-2 text-sm text-white/80 hover:text-white">
+          <ArrowLeft className="h-4 w-4" /> Volver a funcionarios
         </Link>
         <div className="rounded-3xl border border-white/10 bg-card p-8 shadow-elegant">
           <div className="flex items-center gap-3">
