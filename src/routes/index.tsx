@@ -55,9 +55,11 @@ function CitizenLanding() {
 
       <footer className="border-t border-border px-5 py-6 text-center text-sm text-muted-foreground md:py-8">
         <p>© {new Date().getFullYear()} Jefatura de Recaudaciones — {APP_VERSION_LABEL}</p>
-        <Link to="/staff" className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground/80 hover:text-foreground md:mt-3">
-          Acceso funcionarios <ArrowRight className="h-3 w-3" />
-        </Link>
+        {import.meta.env.DEV && (
+          <Link to="/staff" className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground/80 hover:text-foreground md:mt-3">
+            Acceso funcionarios <ArrowRight className="h-3 w-3" />
+          </Link>
+        )}
       </footer>
     </div>
   );
