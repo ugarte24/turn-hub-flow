@@ -16,6 +16,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedOperatorRouteImport } from './routes/_authenticated/operator'
+import { Route as AuthenticatedHostRouteImport } from './routes/_authenticated/host'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
@@ -55,6 +56,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthenticatedOperatorRoute = AuthenticatedOperatorRouteImport.update({
   id: '/operator',
   path: '/operator',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHostRoute = AuthenticatedHostRouteImport.update({
+  id: '/host',
+  path: '/host',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/staff': typeof StaffRoute
   '/ticket': typeof TicketRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/host': typeof AuthenticatedHostRoute
   '/operator': typeof AuthenticatedOperatorRoute
   '/admin/procedures': typeof AuthenticatedAdminProceduresRoute
   '/admin/service-points': typeof AuthenticatedAdminServicePointsRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/display': typeof DisplayRoute
   '/staff': typeof StaffRoute
   '/ticket': typeof TicketRoute
+  '/host': typeof AuthenticatedHostRoute
   '/operator': typeof AuthenticatedOperatorRoute
   '/admin/procedures': typeof AuthenticatedAdminProceduresRoute
   '/admin/service-points': typeof AuthenticatedAdminServicePointsRoute
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/staff': typeof StaffRoute
   '/ticket': typeof TicketRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/_authenticated/host': typeof AuthenticatedHostRoute
   '/_authenticated/operator': typeof AuthenticatedOperatorRoute
   '/_authenticated/admin/procedures': typeof AuthenticatedAdminProceduresRoute
   '/_authenticated/admin/service-points': typeof AuthenticatedAdminServicePointsRoute
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/staff'
     | '/ticket'
     | '/admin'
+    | '/host'
     | '/operator'
     | '/admin/procedures'
     | '/admin/service-points'
@@ -156,6 +166,7 @@ export interface FileRouteTypes {
     | '/display'
     | '/staff'
     | '/ticket'
+    | '/host'
     | '/operator'
     | '/admin/procedures'
     | '/admin/service-points'
@@ -171,6 +182,7 @@ export interface FileRouteTypes {
     | '/staff'
     | '/ticket'
     | '/_authenticated/admin'
+    | '/_authenticated/host'
     | '/_authenticated/operator'
     | '/_authenticated/admin/procedures'
     | '/_authenticated/admin/service-points'
@@ -239,6 +251,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOperatorRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/host': {
+      id: '/_authenticated/host'
+      path: '/host'
+      fullPath: '/host'
+      preLoaderRoute: typeof AuthenticatedHostRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
@@ -305,11 +324,13 @@ const AuthenticatedAdminRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
+  AuthenticatedHostRoute: typeof AuthenticatedHostRoute
   AuthenticatedOperatorRoute: typeof AuthenticatedOperatorRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
+  AuthenticatedHostRoute: AuthenticatedHostRoute,
   AuthenticatedOperatorRoute: AuthenticatedOperatorRoute,
 }
 

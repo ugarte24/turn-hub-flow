@@ -4,11 +4,12 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import QRCode from "qrcode";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, CheckCircle2, Clock, RefreshCcw, Star, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Clock, RefreshCcw, Star, XCircle } from "lucide-react";
 import { fetchAreas, fetchProcedures, type Area, type Procedure } from "@/lib/sigat-queries";
 import {
   cancelTicketByCi,
   findActiveTicketByCi,
+  findActiveTicketByDevice,
   findRateableTicketByCi,
   generateTicket,
   submitTicketRating,
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/ticket")({
   component: TicketPage,
 });
 
-type Step = "ci" | "select" | "confirm" | "ticket" | "existing" | "rate";
+type Step = "ci" | "select" | "confirm" | "ticket" | "existing" | "rate" | "replace";
 type ActiveTicket = {
   id: string; code: string; ci: string; status: string;
   area?: Area | null; procedure?: Procedure | null;
@@ -42,6 +43,7 @@ function TicketPage() {
   });
 
   const findFn = useServerFn(findActiveTicketByCi);
+  const findDeviceFn = useServerFn(findActiveTicketByDevice);
   const findRateFn = useServerFn(findRateableTicketByCi);
   const genFn = useServerFn(generateTicket);
   const cancelFn = useServerFn(cancelTicketByCi);
@@ -51,6 +53,8 @@ function TicketPage() {
     mutationFn: async (c: string) => {
       const active = await findFn({ data: { ci: c } });
       if (active) return { kind: "active" as const, ticket: active };
+      const deviceTicket = await findDeviceFn();
+      if (deviceTicket && deviceTicket.ci !== c) return { kind: "replace" as const, ticket: deviceTicket };
       const rateable = await findRateFn({ data: { ci: c } });
       if (rateable) return { kind: "rate" as const, ticket: rateable };
       return { kind: "none" as const, ticket: null };
@@ -59,6 +63,9 @@ function TicketPage() {
       if (data.kind === "active") {
         setTicket(data.ticket as ActiveTicket);
         setStep("existing");
+      } else if (data.kind === "replace") {
+        setTicket(data.ticket as ActiveTicket);
+        setStep("replace");
       } else if (data.kind === "rate") {
         setTicket(data.ticket as ActiveTicket);
         setStep("rate");
@@ -168,6 +175,14 @@ function TicketPage() {
           {step === "ticket" && ticket && <TicketView t={ticket} onDone={() => { setCi(""); setAreaId(null); setProcedureId(null); setTicket(null); setStep("ci"); }} />}
           {step === "existing" && ticket && (
             <ExistingTicket t={ticket} onCancel={() => cancel.mutate()} loading={cancel.isPending} onView={() => setStep("ticket")} />
+          )}
+          {step === "replace" && ticket && (
+            <StepReplace
+              t={ticket}
+              newCi={ci}
+              onContinue={() => { setTicket(null); setStep("select"); }}
+              onUseExisting={() => { setCi(ticket.ci); setStep("existing"); }}
+            />
           )}
         </div>
       </div>
@@ -447,6 +462,47 @@ function TicketView({ t, onDone }: { t: ActiveTicket; onDone: () => void }) {
       <button onClick={onDone} className="mt-4 inline-flex items-center gap-2 rounded-full border border-border px-5 py-2 text-sm font-medium hover:bg-accent">
         <RefreshCcw className="h-4 w-4" /> Sacar otro turno
       </button>
+    </div>
+  );
+}
+
+function StepReplace({
+  t, newCi, onContinue, onUseExisting,
+}: {
+  t: ActiveTicket;
+  newCi: string;
+  onContinue: () => void;
+  onUseExisting: () => void;
+}) {
+  return (
+    <div>
+      <div className="inline-flex items-center gap-2 rounded-full bg-warning/15 px-3 py-1 text-sm font-medium text-warning-foreground">
+        <AlertTriangle className="h-4 w-4" /> Este dispositivo ya tiene un turno
+      </div>
+      <div className="mt-5 rounded-2xl border border-border bg-accent/40 p-5">
+        <p className="text-xs text-muted-foreground">Turno activo</p>
+        <p className="font-ticket text-4xl font-extrabold text-primary">{formatTicketCode(t.code)}</p>
+        <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+          <div><p className="text-muted-foreground">CI</p><p className="font-mono font-semibold">{t.ci}</p></div>
+          <div><p className="text-muted-foreground">Trámite</p><p className="font-semibold">{t.procedure?.name ?? "—"}</p></div>
+        </div>
+      </div>
+      <p className="mt-4 text-sm text-muted-foreground">
+        Si continuás con el CI <span className="font-mono font-semibold text-foreground">{newCi}</span>, el turno{" "}
+        <span className="font-ticket font-bold text-primary">{formatTicketCode(t.code)}</span> se cancelará.
+      </p>
+      <div className="mt-5 flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={onContinue}
+          className="rounded-2xl bg-gradient-primary py-3.5 font-semibold text-primary-foreground shadow-elegant hover:brightness-105"
+        >
+          Continuar y cancelar ese turno
+        </button>
+        <button type="button" onClick={onUseExisting} className="rounded-2xl border border-border py-3 font-medium hover:bg-accent">
+          Mantener el turno {formatTicketCode(t.code)}
+        </button>
+      </div>
     </div>
   );
 }

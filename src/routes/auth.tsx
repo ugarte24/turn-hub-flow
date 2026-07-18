@@ -15,23 +15,34 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  async function goHome(userId: string) {
+    const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+    const roles = (data ?? []).map((r) => r.role);
+    if (roles.includes("host") && !roles.includes("admin") && !roles.includes("operator")) {
+      navigate({ to: "/host" });
+    } else {
+      navigate({ to: "/operator" });
+    }
+  }
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/operator" });
+      if (data.session) void goHome(data.session.user.id);
     });
-  }, [navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setLoading(false);
     if (error) {
       toast.error(error.message);
       return;
     }
     toast.success("Bienvenido");
-    navigate({ to: "/operator" });
+    await goHome(data.user.id);
   }
 
   return (

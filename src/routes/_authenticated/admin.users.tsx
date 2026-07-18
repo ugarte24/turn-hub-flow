@@ -13,6 +13,12 @@ export const Route = createFileRoute("/_authenticated/admin/users")({
 
 type Op = { id: string; full_name: string; active: boolean; roles: string[] };
 
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Administrador",
+  operator: "Operador",
+  host: "Orientador",
+};
+
 function UsersPage() {
   const qc = useQueryClient();
   const listFn = useServerFn(listOperators);
@@ -24,7 +30,7 @@ function UsersPage() {
   const [formKey, setFormKey] = useState(0);
 
   const create = useMutation({
-    mutationFn: async (v: { email: string; password: string; fullName: string; role: "admin" | "operator" }) =>
+    mutationFn: async (v: { email: string; password: string; fullName: string; role: "admin" | "operator" | "host" }) =>
       createFn({ data: v }),
     onSuccess: () => { toast.success("Usuario creado"); qc.invalidateQueries({ queryKey: ["users"] }); setShowForm(false); },
     onError: (e: Error) => toast.error(e.message),
@@ -81,7 +87,7 @@ function UsersPage() {
                 <td className="px-4 py-3 font-medium">{u.full_name || "(sin nombre)"}</td>
                 <td className="px-4 py-3">
                   {u.roles.map((r) => (
-                    <span key={r} className="mr-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{r}</span>
+                    <span key={r} className="mr-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{ROLE_LABELS[r] ?? r}</span>
                   ))}
                 </td>
                 <td className="px-4 py-3">
@@ -107,11 +113,11 @@ function UsersPage() {
   );
 }
 
-function UserForm({ onSubmit, loading }: { onSubmit: (v: { email: string; password: string; fullName: string; role: "admin" | "operator" }) => void; loading: boolean }) {
+function UserForm({ onSubmit, loading }: { onSubmit: (v: { email: string; password: string; fullName: string; role: "admin" | "operator" | "host" }) => void; loading: boolean }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [role, setRole] = useState<"admin" | "operator">("operator");
+  const [role, setRole] = useState<"admin" | "operator" | "host">("operator");
   const unlock = (e: React.FocusEvent<HTMLInputElement>) => {
     e.currentTarget.readOnly = false;
   };
@@ -166,8 +172,9 @@ function UserForm({ onSubmit, loading }: { onSubmit: (v: { email: string; passwo
         />
       </Field>
       <Field label="Rol">
-        <select value={role} onChange={(e) => setRole(e.target.value as "admin" | "operator")} className="input" autoComplete="off">
+        <select value={role} onChange={(e) => setRole(e.target.value as "admin" | "operator" | "host")} className="input" autoComplete="off">
           <option value="operator">Operador</option>
+          <option value="host">Orientador</option>
           <option value="admin">Administrador</option>
         </select>
       </Field>

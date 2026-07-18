@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, LayoutDashboard, Users, Building2, ListChecks, Radio, Settings2, Menu } from "lucide-react";
+import { LogOut, LayoutDashboard, Users, Building2, ListChecks, Radio, Settings2, Menu, TicketPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { APP_VERSION_LABEL } from "@/lib/version";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -19,12 +19,15 @@ function AuthLayout() {
   const { user } = Route.useRouteContext();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [roles, setRoles] = useState<string[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const isAdmin = roles.includes("admin");
+  const isHost = roles.includes("host");
+  const isOperator = roles.includes("operator");
 
   useEffect(() => {
     supabase.from("user_roles").select("role").eq("user_id", user.id).then(({ data }) => {
-      setIsAdmin((data ?? []).some((r) => r.role === "admin"));
+      setRoles((data ?? []).map((r) => r.role));
     });
   }, [user.id]);
 
@@ -35,7 +38,8 @@ function AuthLayout() {
   }
 
   const nav = [
-    { to: "/operator", label: "Mi puesto", icon: Radio },
+    ...(isOperator || isAdmin || roles.length === 0 ? [{ to: "/operator", label: "Mi puesto", icon: Radio }] : []),
+    ...(isHost || isAdmin ? [{ to: "/host", label: "Sacar turnos", icon: TicketPlus }] : []),
     ...(isAdmin
       ? [
           { to: "/admin", label: "Dashboard", icon: LayoutDashboard },

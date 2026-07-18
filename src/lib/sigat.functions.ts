@@ -1,10 +1,36 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getCookie, setCookie } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireSupabaseUrlAndAnon } from "@/integrations/supabase/env";
 import { todayLaPaz } from "@/lib/date";
+
+// ---------- Device identity (cookie) ----------
+const DEVICE_COOKIE = "sigat_device";
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Reads the device cookie; creates and sets it if missing. */
+function getOrCreateDeviceId(): string {
+  const existing = getCookie(DEVICE_COOKIE);
+  if (existing && UUID_RE.test(existing)) return existing;
+  const id = crypto.randomUUID();
+  setCookie(DEVICE_COOKIE, id, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+  });
+  return id;
+}
+
+/** Reads the device cookie without creating it. */
+function getDeviceId(): string | null {
+  const existing = getCookie(DEVICE_COOKIE);
+  return existing && UUID_RE.test(existing) ? existing : null;
+}
 
 // Public server client (anon)
 function publicClient() {
@@ -33,7 +59,62 @@ export const generateTicket = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const sb = publicClient();
+    const deviceId = getOrCreateDeviceId();
     const { data: row, error } = await sb.rpc("generate_ticket", {
+      _ci: data.ci,
+      _area_id: data.areaId,
+      _procedure_id: data.procedureId,
+      _device_id: deviceId,
+    });
+    if (error) throw new Error(error.message);
+    const ticket = (Array.isArray(row) ? row[0] : row) as { id?: string } | null;
+    if (!ticket?.id) return row;
+
+    const { data: full, error: fetchError } = await sb
+      .from("tickets")
+      .select("*, area:areas(*), procedure:procedures(*)")
+      .eq("id", ticket.id)
+      .single();
+    if (fetchError) throw new Error(fetchError.message);
+    return full;
+  });
+
+/** Active ticket issued from this device (any CI). Used to warn before replacing it. */
+export const findActiveTicketByDevice = createServerFn({ method: "POST" }).handler(async () => {
+  const deviceId = getDeviceId();
+  if (!deviceId) return null;
+  const sb = publicClient();
+  const { data: t } = await sb
+    .from("tickets")
+    .select("*, area:areas(*), procedure:procedures(*)")
+    .eq("device_id", deviceId)
+    .in("status", ["waiting", "calling", "in_service"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return t;
+});
+
+// ---------- HOST (Orientador): generate tickets on behalf of citizens ----------
+export const generateTicketAsStaff = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { ci: string; areaId: string; procedureId: string }) =>
+    z.object({
+      ci: z.string().trim().min(4).max(20).regex(/^[0-9A-Za-z-]+$/),
+      areaId: z.string().uuid(),
+      procedureId: z.string().uuid(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const [{ data: isHost }, { data: isAdmin }] = await Promise.all([
+      supabase.rpc("has_role", { _user_id: userId, _role: "host" }),
+      supabase.rpc("has_role", { _user_id: userId, _role: "admin" }),
+    ]);
+    if (!isHost && !isAdmin) throw new Error("Solo el personal orientador puede usar esta función");
+
+    // Sin _device_id: los turnos del mostrador no se cancelan entre sí
+    const { data: row, error } = await supabase.rpc("generate_ticket", {
       _ci: data.ci,
       _area_id: data.areaId,
       _procedure_id: data.procedureId,
@@ -42,7 +123,7 @@ export const generateTicket = createServerFn({ method: "POST" })
     const ticket = (Array.isArray(row) ? row[0] : row) as { id?: string } | null;
     if (!ticket?.id) return row;
 
-    const { data: full, error: fetchError } = await sb
+    const { data: full, error: fetchError } = await supabase
       .from("tickets")
       .select("*, area:areas(*), procedure:procedures(*)")
       .eq("id", ticket.id)
@@ -208,12 +289,12 @@ export const listOperators = createServerFn({ method: "GET" })
 
 export const createOperator = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { email: string; password: string; fullName: string; role: "admin" | "operator" }) =>
+  .inputValidator((d: { email: string; password: string; fullName: string; role: "admin" | "operator" | "host" }) =>
     z.object({
       email: z.string().email().max(200),
       password: z.string().min(6).max(100),
       fullName: z.string().trim().min(2).max(120),
-      role: z.enum(["admin", "operator"]),
+      role: z.enum(["admin", "operator", "host"]),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {

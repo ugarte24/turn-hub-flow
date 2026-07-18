@@ -238,6 +238,7 @@ export type Database = {
           code: string
           created_at: string
           day: string
+          device_id: string | null
           finished_at: string | null
           id: string
           number: number
@@ -254,6 +255,7 @@ export type Database = {
           code: string
           created_at?: string
           day?: string
+          device_id?: string | null
           finished_at?: string | null
           id?: string
           number: number
@@ -270,6 +272,7 @@ export type Database = {
           code?: string
           created_at?: string
           day?: string
+          device_id?: string | null
           finished_at?: string | null
           id?: string
           number?: number
@@ -335,6 +338,7 @@ export type Database = {
           code: string
           created_at: string
           day: string
+          device_id: string | null
           finished_at: string | null
           id: string
           number: number
@@ -352,7 +356,7 @@ export type Database = {
         }
       }
       generate_ticket: {
-        Args: { _area_id: string; _ci: string; _procedure_id: string }
+        Args: { _area_id: string; _ci: string; _device_id?: string | null; _procedure_id: string }
         Returns: {
           area_id: string
           called_at: string | null
@@ -360,6 +364,7 @@ export type Database = {
           code: string
           created_at: string
           day: string
+          device_id: string | null
           finished_at: string | null
           id: string
           number: number
@@ -406,7 +411,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "operator"
+      app_role: "admin" | "operator" | "host"
       ticket_status:
         | "waiting"
         | "calling"
