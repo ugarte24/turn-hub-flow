@@ -34,7 +34,7 @@ function HostPage() {
     return (
       <div className="p-10">
         <div className="rounded-2xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
-          Tu cuenta no tiene el rol de Orientador. Pide al administrador que te lo asigne.
+          Tu cuenta no tiene el rol de Personal de apoyo. Pide al administrador que te lo asigne.
         </div>
       </div>
     );

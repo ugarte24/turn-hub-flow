@@ -95,7 +95,7 @@ export const findActiveTicketByDevice = createServerFn({ method: "POST" }).handl
   return t;
 });
 
-// ---------- HOST (Orientador): generate tickets on behalf of citizens ----------
+// ---------- HOST (Personal de apoyo): generate tickets on behalf of citizens ----------
 export const generateTicketAsStaff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { ci: string; areaId: string; procedureId: string }) =>
@@ -111,7 +111,7 @@ export const generateTicketAsStaff = createServerFn({ method: "POST" })
       supabase.rpc("has_role", { _user_id: userId, _role: "host" }),
       supabase.rpc("has_role", { _user_id: userId, _role: "admin" }),
     ]);
-    if (!isHost && !isAdmin) throw new Error("Solo el personal orientador puede usar esta función");
+    if (!isHost && !isAdmin) throw new Error("Solo el personal de apoyo puede usar esta función");
 
     // Sin _device_id: los turnos del mostrador no se cancelan entre sí
     const { data: row, error } = await supabase.rpc("generate_ticket", {

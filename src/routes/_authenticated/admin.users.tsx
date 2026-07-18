@@ -16,7 +16,7 @@ type Op = { id: string; full_name: string; active: boolean; roles: string[] };
 const ROLE_LABELS: Record<string, string> = {
   admin: "Administrador",
   operator: "Operador",
-  host: "Orientador",
+  host: "Personal de apoyo",
 };
 
 function UsersPage() {
@@ -174,7 +174,7 @@ function UserForm({ onSubmit, loading }: { onSubmit: (v: { email: string; passwo
       <Field label="Rol">
         <select value={role} onChange={(e) => setRole(e.target.value as "admin" | "operator" | "host")} className="input" autoComplete="off">
           <option value="operator">Operador</option>
-          <option value="host">Orientador</option>
+          <option value="host">Personal de apoyo</option>
           <option value="admin">Administrador</option>
         </select>
       </Field>
