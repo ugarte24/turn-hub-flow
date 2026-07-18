@@ -88,7 +88,9 @@ function DisplayPage() {
   );
   const attending = [...callingSorted, ...inService];
   const showVideo = tv.videoEnabled && tv.videoUrl.trim().length > 0 && tv.videoSource !== "none";
-  const upcoming = tickets.filter((t) => t.status === "waiting").slice(-10).reverse();
+  const waiting = tickets.filter((t) => t.status === "waiting");
+  const upcoming = waiting.slice(-12).reverse();
+  const moreWaiting = waiting.length - upcoming.length;
 
   useEffect(() => {
     if (!tv.voiceEnabled) return;
@@ -174,6 +176,13 @@ function DisplayPage() {
                     <span className="font-ticket text-2xl font-bold leading-none md:text-3xl">{formatTicketCode(t.code)}</span>
                   </li>
                 ))}
+                {moreWaiting > 0 && (
+                  <li className="flex items-center rounded-lg border border-dashed border-primary-glow/40 bg-primary-glow/10 px-3 py-1.5">
+                    <span className="font-ticket text-2xl font-bold leading-none text-primary-glow md:text-3xl">
+                      +{moreWaiting}
+                    </span>
+                  </li>
+                )}
               </ul>
             )}
           </div>
