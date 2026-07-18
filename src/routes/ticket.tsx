@@ -387,7 +387,7 @@ function StepConfirm({ ci, area, proc, onBack, onConfirm, loading }: { ci: strin
       <p className="mt-1.5 text-sm text-muted-foreground">Revisá los datos antes de generar el número.</p>
       <dl className="mt-6 overflow-hidden divide-y divide-border rounded-2xl border border-border bg-muted/20">
         <Row label="CI" value={ci} />
-        <Row label="Área" value={`${area.code} · ${area.name}`} />
+        <Row label="Área" value={area.name} />
         <Row label="Trámite" value={proc.name} />
         <Row label="Fecha" value={now.toLocaleDateString("es-BO")} />
         <Row label="Hora" value={now.toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit" })} />

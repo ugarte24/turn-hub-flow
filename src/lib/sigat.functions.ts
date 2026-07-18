@@ -116,10 +116,7 @@ export const cancelTicketByCi = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const sb = publicClient();
-    const { data: t } = await sb.from("tickets").select("*").eq("id", data.ticketId).maybeSingle();
-    if (!t || t.ci !== data.ci) throw new Error("Ticket no encontrado");
-    if (t.status !== "waiting") throw new Error("Solo se puede cancelar en estado En espera");
-    const { error } = await sb.from("tickets").update({ status: "cancelled" }).eq("id", data.ticketId);
+    const { error } = await sb.rpc("cancel_ticket", { _ci: data.ci, _ticket_id: data.ticketId });
     if (error) throw new Error(error.message);
     return { ok: true };
   });

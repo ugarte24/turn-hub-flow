@@ -326,6 +326,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cancel_ticket: {
+        Args: { _ci: string; _ticket_id: string }
+        Returns: {
+          area_id: string
+          called_at: string | null
+          ci: string
+          code: string
+          created_at: string
+          day: string
+          finished_at: string | null
+          id: string
+          number: number
+          operator_id: string | null
+          procedure_id: string
+          service_point_id: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["ticket_status"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tickets"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       generate_ticket: {
         Args: { _area_id: string; _ci: string; _procedure_id: string }
         Returns: {
