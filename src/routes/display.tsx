@@ -89,7 +89,7 @@ function DisplayPage() {
   const attending = [...callingSorted, ...inService];
   const showVideo = tv.videoEnabled && tv.videoUrl.trim().length > 0 && tv.videoSource !== "none";
   const waiting = tickets.filter((t) => t.status === "waiting");
-  const upcoming = waiting.slice(-12).reverse();
+  const upcoming = waiting.slice(-23).reverse();
   const moreWaiting = waiting.length - upcoming.length;
 
   useEffect(() => {
