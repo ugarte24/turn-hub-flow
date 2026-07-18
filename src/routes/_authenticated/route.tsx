@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, redirect, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { LogOut, LayoutDashboard, Users, Building2, ListChecks, Radio, Settings2, Menu, TicketPlus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { APP_VERSION_LABEL } from "@/lib/version";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
@@ -10,26 +10,25 @@ export const Route = createFileRoute("/_authenticated")({
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
-    return { user: data.user };
+    // Los roles se cargan antes de renderizar para que el menú nazca
+    // completo y no cambie de tamaño.
+    const { data: roleRows } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", data.user.id);
+    return { user: data.user, roles: (roleRows ?? []).map((r) => r.role) };
   },
   component: AuthLayout,
 });
 
 function AuthLayout() {
-  const { user } = Route.useRouteContext();
+  const { user, roles } = Route.useRouteContext();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [roles, setRoles] = useState<string[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const isAdmin = roles.includes("admin");
   const isHost = roles.includes("host");
   const isOperator = roles.includes("operator");
-
-  useEffect(() => {
-    supabase.from("user_roles").select("role").eq("user_id", user.id).then(({ data }) => {
-      setRoles((data ?? []).map((r) => r.role));
-    });
-  }, [user.id]);
 
   async function signOut() {
     setMenuOpen(false);
@@ -80,8 +79,8 @@ function AuthLayout() {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <aside className="hidden w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground md:flex">
+    <div className="flex h-dvh overflow-hidden bg-background">
+      <aside className="hidden w-64 shrink-0 flex-col overflow-y-auto bg-sidebar text-sidebar-foreground md:flex">
         <div className="px-6 py-6">
           <div className="flex items-center gap-3">
             <img src="/sigat-icon.png" alt="SIGAT" className="h-11 w-11 rounded-xl shadow-elegant" />

@@ -14,7 +14,7 @@ type Row = { key: string; value: Record<string, unknown> };
 export type VideoSource = "none" | "file" | "youtube" | "url" | "iframe";
 
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB
-const CITIZEN_QR_URL = "https://turn-hub-flow.vercel.app/ticket";
+const CITIZEN_QR_URL = "https://turn-hub-flow.vercel.app";
 const STAFF_URL = "https://turn-hub-flow.vercel.app/staff";
 
 function SettingsPage() {
