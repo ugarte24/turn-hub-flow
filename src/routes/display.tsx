@@ -29,44 +29,44 @@ function attendingTypeScale(count: number) {
   if (count <= 2) {
     return {
       gap: "gap-2",
-      row: "grid-cols-[minmax(7rem,10rem)_3.25rem_1fr] gap-x-3 px-5 py-3",
-      code: "text-[clamp(3.75rem,12vh,8rem)]",
-      desk: "text-3xl md:text-4xl lg:text-5xl",
-      arrow: "h-10 w-10 md:h-12 md:w-12",
+      row: "grid-cols-[auto_auto_minmax(0,1fr)] gap-x-3 px-4 py-3",
+      code: "text-[clamp(3.25rem,10vh,6.5rem)]",
+      desk: "text-2xl md:text-3xl lg:text-4xl",
+      arrow: "h-9 w-9 md:h-11 md:w-11",
     };
   }
   if (count <= 4) {
     return {
       gap: "gap-2",
-      row: "grid-cols-[minmax(6rem,8.5rem)_2.75rem_1fr] gap-x-3 px-4 py-2.5",
-      code: "text-[clamp(3rem,9vh,6rem)]",
-      desk: "text-2xl md:text-3xl lg:text-4xl",
+      row: "grid-cols-[auto_auto_minmax(0,1fr)] gap-x-3 px-4 py-2.5",
+      code: "text-[clamp(2.75rem,8vh,5rem)]",
+      desk: "text-xl md:text-2xl lg:text-3xl",
       arrow: "h-8 w-8 md:h-10 md:w-10",
     };
   }
   if (count <= 6) {
     return {
       gap: "gap-2",
-      row: "grid-cols-[minmax(5.25rem,7rem)_2.5rem_1fr] gap-x-2 px-4 py-2",
-      code: "text-[clamp(2.5rem,7vh,4.75rem)]",
-      desk: "text-xl md:text-2xl lg:text-3xl",
-      arrow: "h-7 w-7 md:h-9 md:w-9",
+      row: "grid-cols-[auto_auto_minmax(0,1fr)] gap-x-2 px-3 py-2",
+      code: "text-[clamp(2.25rem,6.5vh,4.25rem)]",
+      desk: "text-lg md:text-xl lg:text-2xl",
+      arrow: "h-7 w-7 md:h-8 md:w-8",
     };
   }
   if (count <= 8) {
     return {
       gap: "gap-1.5",
-      row: "grid-cols-[minmax(4.5rem,6rem)_2.25rem_1fr] gap-x-2 px-3.5 py-1.5",
-      code: "text-[clamp(2.1rem,5.5vh,3.5rem)]",
-      desk: "text-lg md:text-xl lg:text-2xl",
-      arrow: "h-6 w-6 md:h-8 md:w-8",
+      row: "grid-cols-[auto_auto_minmax(0,1fr)] gap-x-2 px-3 py-1.5",
+      code: "text-[clamp(1.9rem,5vh,3.25rem)]",
+      desk: "text-base md:text-lg lg:text-xl",
+      arrow: "h-6 w-6 md:h-7 md:w-7",
     };
   }
   return {
     gap: "gap-1",
-    row: "grid-cols-[minmax(3.75rem,5rem)_2rem_1fr] gap-x-1.5 px-3 py-1",
-    code: "text-[clamp(1.6rem,4vh,2.6rem)]",
-    desk: "text-base md:text-lg lg:text-xl",
+    row: "grid-cols-[auto_auto_minmax(0,1fr)] gap-x-1.5 px-2.5 py-1",
+    code: "text-[clamp(1.5rem,3.8vh,2.4rem)]",
+    desk: "text-sm md:text-base lg:text-lg",
     arrow: "h-5 w-5 md:h-6 md:w-6",
   };
 }
@@ -166,10 +166,29 @@ function callAnnounceKey(id: string, calledAt: string) {
   return `${id}:${sec}`;
 }
 
-/** Una sola cola global: un ding + una voz por llamado. */
+/** Una sola cola global: si llaman a la vez, suena uno y después el otro. */
 const announcedCallKeys = new Set<string>();
 let announceChain: Promise<void> = Promise.resolve();
-let announcing = false;
+
+function waitSpeechIdle(maxMs = 15_000): Promise<void> {
+  return new Promise((resolve) => {
+    const started = Date.now();
+    const tick = () => {
+      try {
+        const busy = speechSynthesis.speaking || speechSynthesis.pending;
+        if (!busy || Date.now() - started > maxMs) {
+          resolve();
+          return;
+        }
+      } catch {
+        resolve();
+        return;
+      }
+      window.setTimeout(tick, 120);
+    };
+    tick();
+  });
+}
 
 function speakOnce(text: string): Promise<void> {
   return new Promise((resolve) => {
@@ -203,8 +222,8 @@ function speakOnce(text: string): Promise<void> {
       msg.onend = done;
       msg.onerror = done;
 
-      // Hablar una sola vez, sin cancel/pause (rompe el audio en Chrome/Edge)
       synth.speak(msg);
+      // Seguridad: no dejar la cola colgada si el navegador no dispara onend
       window.setTimeout(done, 12_000);
     } catch {
       resolve();
@@ -212,26 +231,26 @@ function speakOnce(text: string): Promise<void> {
   });
 }
 
+async function playAnnounceSequence(code: string, desk: string) {
+  await unlockTvAudio();
+  // Espera a que termine cualquier voz anterior (evita solapamiento)
+  await waitSpeechIdle();
+  playCallDing();
+  await sleep(550);
+  await speakOnce(`${code}, pasar a ${desk}`);
+  await waitSpeechIdle();
+  // Pausa clara entre un llamado y el siguiente
+  await sleep(700);
+}
+
 function enqueueCallAnnounce(key: string, code: string, desk: string) {
   if (announcedCallKeys.has(key)) return;
   announcedCallKeys.add(key);
 
   announceChain = announceChain
-    .then(async () => {
-      if (announcing) await sleep(300);
-      announcing = true;
-      try {
-        await unlockTvAudio();
-        playCallDing();
-        await sleep(500);
-        await speakOnce(`${code}, pasar a ${desk}`);
-        await sleep(350);
-      } finally {
-        announcing = false;
-      }
-    })
+    .then(() => playAnnounceSequence(code, desk))
     .catch(() => {
-      announcing = false;
+      /* ignore: no romper la cola */
     });
 }
 
@@ -457,20 +476,20 @@ function DisplayPage() {
                     }`}
                   >
                     <span
-                      className={`truncate font-ticket font-black leading-none text-amber-300 drop-shadow-[0_0_14px_rgba(251,191,36,0.55)] ${attendingScale.code} ${
+                      className={`shrink-0 font-ticket font-black leading-none text-amber-300 drop-shadow-[0_0_14px_rgba(251,191,36,0.55)] ${attendingScale.code} ${
                         isAnimating ? "animate-tv-call-code-burst" : ""
                       }`}
                     >
                       {formatTicketCode(t.code)}
                     </span>
-                    <span className="flex items-center justify-center">
+                    <span className="flex shrink-0 items-center justify-center">
                       <ArrowRight
                         className={`${attendingScale.arrow} text-amber-300/90`}
                         strokeWidth={3}
                         aria-hidden
                       />
                     </span>
-                    <span className={`min-w-0 truncate text-right font-bold uppercase tracking-wide text-white/90 ${attendingScale.desk}`}>
+                    <span className={`min-w-0 text-right font-bold uppercase leading-tight tracking-wide text-white/90 break-words ${attendingScale.desk}`}>
                       {abbreviateDeskName(t.service_point?.name)}
                     </span>
                   </li>
