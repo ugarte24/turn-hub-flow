@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchTodayTickets } from "@/lib/sigat-queries";
 import { formatTicketCode } from "@/lib/ticket-code";
@@ -268,11 +268,20 @@ function DisplayPage() {
 
   const calling = tickets.filter((t) => t.status === "calling");
   const inService = tickets.filter((t) => t.status === "in_service");
-  // Llamando (más reciente arriba), luego en atención
-  const callingSorted = [...calling].sort(
-    (a, b) => new Date(b.called_at ?? 0).getTime() - new Date(a.called_at ?? 0).getTime(),
-  );
-  const attending = [...callingSorted, ...inService];
+  // Orden estable: al llamar o repetir, el turno no salta de fila
+  const attendingOrderRef = useRef<string[]>([]);
+  const attendingActive = [...calling, ...inService];
+  const attendingIds = new Set(attendingActive.map((t) => t.id));
+  attendingOrderRef.current = attendingOrderRef.current.filter((id) => attendingIds.has(id));
+  for (const t of attendingActive) {
+    if (!attendingOrderRef.current.includes(t.id)) {
+      attendingOrderRef.current.push(t.id);
+    }
+  }
+  const attendingById = new Map(attendingActive.map((t) => [t.id, t]));
+  const attending = attendingOrderRef.current
+    .map((id) => attendingById.get(id))
+    .filter((t): t is TicketRow => !!t);
   const showVideo = tv.videoEnabled && tv.videoUrl.trim().length > 0 && tv.videoSource !== "none";
   const waiting = tickets.filter((t) => t.status === "waiting");
   const upcoming = waiting.slice(-23).reverse();
@@ -414,7 +423,7 @@ function DisplayPage() {
                 return (
                   <li
                     key={t.id}
-                    className={`flex min-h-0 flex-1 items-center justify-between gap-4 rounded-2xl border px-4 py-2 md:px-5 md:py-3 ${
+                    className={`grid min-h-0 flex-1 grid-cols-[minmax(5.5rem,7.5rem)_2.75rem_1fr] items-center gap-x-2 rounded-2xl border px-4 py-2 md:grid-cols-[minmax(6.5rem,9rem)_3rem_1fr] md:gap-x-3 md:px-5 md:py-3 ${
                       isCalling
                         ? isAnimating
                           ? "border-primary-glow/70 bg-primary/25 animate-tv-call-burst"
@@ -423,18 +432,20 @@ function DisplayPage() {
                     }`}
                   >
                     <span
-                      className={`shrink-0 font-ticket text-[clamp(3.5rem,11vh,7.5rem)] font-black leading-none text-amber-300 drop-shadow-[0_0_18px_rgba(251,191,36,0.65)] ${
+                      className={`font-ticket text-[clamp(3.5rem,11vh,7.5rem)] font-black leading-none text-amber-300 drop-shadow-[0_0_18px_rgba(251,191,36,0.65)] ${
                         isAnimating ? "animate-tv-call-code-burst" : ""
                       }`}
                     >
                       {formatTicketCode(t.code)}
                     </span>
-                    <ArrowRight
-                      className="h-[clamp(1.75rem,5vh,3rem)] w-[clamp(1.75rem,5vh,3rem)] shrink-0 text-amber-300/90"
-                      strokeWidth={3}
-                      aria-hidden
-                    />
-                    <span className="min-w-0 flex-1 truncate text-right text-xl font-bold uppercase tracking-wide text-white/90 md:text-3xl lg:text-4xl">
+                    <span className="flex items-center justify-center">
+                      <ArrowRight
+                        className="h-[clamp(1.75rem,5vh,3rem)] w-[clamp(1.75rem,5vh,3rem)] text-amber-300/90"
+                        strokeWidth={3}
+                        aria-hidden
+                      />
+                    </span>
+                    <span className="min-w-0 truncate text-right text-xl font-bold uppercase tracking-wide text-white/90 md:text-3xl lg:text-4xl">
                       {abbreviateDeskName(t.service_point?.name)}
                     </span>
                   </li>
