@@ -76,18 +76,22 @@ function AdminDashboard() {
   }, [list]);
 
   return (
-    <div className="p-6 md:p-10">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:p-10">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold">Dashboard en tiempo real</h1>
+          <h1 className="text-2xl font-extrabold md:text-3xl">Dashboard en tiempo real</h1>
           <p className="text-sm text-muted-foreground">Actividad de la jornada actual</p>
         </div>
-        <button onClick={() => reset.mutate()} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm hover:bg-accent">
+        <button
+          type="button"
+          onClick={() => reset.mutate()}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm hover:bg-accent sm:w-auto"
+        >
           <RotateCcw className="h-4 w-4" /> Reiniciar numeración
         </button>
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+      <div className="mt-5 grid grid-cols-2 gap-2.5 sm:gap-4 md:mt-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
         <StatCard icon={Ticket} label="Emitidos hoy" value={stats.total} color="primary" />
         <StatCard icon={Clock} label="En espera" value={stats.waiting} color="warning" />
         <StatCard icon={Users2} label="En atención" value={stats.inService} color="primary" />
@@ -102,18 +106,18 @@ function AdminDashboard() {
         />
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-card p-6">
-          <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Trámites más solicitados</h2>
+      <div className="mt-6 grid gap-4 md:mt-8 md:gap-6 lg:grid-cols-2">
+        <div className="rounded-2xl border border-border bg-card p-4 md:p-6">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground md:text-sm">Trámites más solicitados</h2>
           <ul className="mt-4 space-y-2">
             {byProc.length === 0 && <li className="text-sm text-muted-foreground">Sin datos aún</li>}
             {byProc.map(([name, count]) => {
               const max = byProc[0][1];
               return (
                 <li key={name}>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">{name}</span>
-                    <span className="tabular-nums text-muted-foreground">{count}</span>
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <span className="min-w-0 truncate font-medium">{name}</span>
+                    <span className="shrink-0 tabular-nums text-muted-foreground">{count}</span>
                   </div>
                   <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
                     <div className="h-full bg-gradient-primary" style={{ width: `${(count / max) * 100}%` }} />
@@ -124,26 +128,26 @@ function AdminDashboard() {
           </ul>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-6">
-          <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Estado de puestos</h2>
-          <ul className="mt-4 grid grid-cols-2 gap-2">
+        <div className="rounded-2xl border border-border bg-card p-4 md:p-6">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground md:text-sm">Estado de puestos</h2>
+          <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {(sps.data ?? []).map((sp) => {
               const busy = spBusy.get(sp.name);
               const state = !sp.active ? "Inactivo" : busy ? "Ocupado" : "Activo";
               const cls = !sp.active ? "bg-muted text-muted-foreground" : busy ? "bg-warning/20 text-warning-foreground" : "bg-success/15 text-success";
               return (
-                <li key={sp.id} className="flex items-center justify-between rounded-xl border border-border p-3">
-                  <span className="text-sm font-medium">{sp.name}</span>
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${cls}`}>{state}</span>
+                <li key={sp.id} className="flex items-center justify-between gap-2 rounded-xl border border-border p-3">
+                  <span className="min-w-0 truncate text-sm font-medium">{sp.name}</span>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold md:text-xs ${cls}`}>{state}</span>
                 </li>
               );
             })}
           </ul>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-6 lg:col-span-2">
+        <div className="rounded-2xl border border-border bg-card p-4 md:p-6 lg:col-span-2">
           <div className="flex flex-wrap items-end justify-between gap-2">
-            <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Calificaciones de hoy</h2>
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground md:text-sm">Calificaciones de hoy</h2>
             <p className="text-xs text-muted-foreground">
               {stats.ratingCount
                 ? `${stats.ratingCount} respuesta${stats.ratingCount === 1 ? "" : "s"} · promedio ${stats.avgScore.toFixed(1)} ★`
@@ -191,12 +195,12 @@ function StatCard({ icon: Icon, label, value, color }: { icon: React.ComponentTy
     destructive: "bg-destructive text-destructive-foreground",
   };
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
-      <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${colors[color]}`}>
-        <Icon className="h-4 w-4" />
+    <div className="rounded-xl border border-border bg-card p-3 md:rounded-2xl md:p-5">
+      <div className={`flex h-8 w-8 items-center justify-center rounded-lg md:h-9 md:w-9 ${colors[color]}`}>
+        <Icon className="h-3.5 w-3.5 md:h-4 md:w-4" />
       </div>
-      <p className="mt-3 text-xs uppercase tracking-widest text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-extrabold">{value}</p>
+      <p className="mt-2 text-[9px] uppercase tracking-widest text-muted-foreground md:mt-3 md:text-xs">{label}</p>
+      <p className="mt-0.5 text-xl font-extrabold leading-none md:mt-1 md:text-2xl">{value}</p>
     </div>
   );
 }

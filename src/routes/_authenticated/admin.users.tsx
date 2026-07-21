@@ -91,17 +91,19 @@ function UsersPage() {
     setEditing(null);
   }
 
+  const list = (users.data as Op[] | undefined) ?? [];
+
   return (
-    <div className="p-6 md:p-10">
-      <div className="flex items-center justify-between">
+    <div className="p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:p-10">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold">Usuarios</h1>
+          <h1 className="text-2xl font-extrabold md:text-3xl">Usuarios</h1>
           <p className="text-sm text-muted-foreground">Operadores y administradores del sistema</p>
         </div>
         <button
           type="button"
           onClick={() => (mode !== "closed" ? closeForm() : openCreate())}
-          className="inline-flex items-center gap-2 rounded-full bg-gradient-primary px-4 py-2 text-primary-foreground shadow-elegant"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-elegant sm:w-auto"
         >
           <UserPlus className="h-4 w-4" /> {mode !== "closed" ? "Cerrar" : "Nuevo usuario"}
         </button>
@@ -137,7 +139,57 @@ function UsersPage() {
         />
       )}
 
-      <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-card">
+      {/* Móvil: tarjetas */}
+      <div className="mt-5 space-y-3 md:hidden">
+        {list.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+            No hay usuarios
+          </p>
+        ) : (
+          list.map((u) => (
+            <div key={u.id} className="rounded-2xl border border-border bg-card p-4">
+              <div className="flex items-start justify-between gap-2">
+                <p className="min-w-0 flex-1 text-sm font-semibold leading-snug">{u.full_name || "(sin nombre)"}</p>
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${u.active ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}>
+                  {u.active ? "Activo" : "Inactivo"}
+                </span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {u.roles.map((r) => (
+                  <span key={r} className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">{ROLE_LABELS[r] ?? r}</span>
+                ))}
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => openEdit(u)}
+                  className="inline-flex min-h-10 items-center justify-center gap-1 rounded-xl border border-border px-2 text-xs font-medium hover:bg-accent"
+                >
+                  <Pencil className="h-3.5 w-3.5" /> Editar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggle.mutate({ userId: u.id, active: !u.active })}
+                  className="inline-flex min-h-10 items-center justify-center gap-1 rounded-xl border border-border px-2 text-xs font-medium hover:bg-accent"
+                >
+                  {u.active ? <ShieldOff className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+                  {u.active ? "Desact." : "Activar"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => confirm("¿Eliminar usuario?") && del.mutate(u.id)}
+                  className="inline-flex min-h-10 items-center justify-center gap-1 rounded-xl border border-destructive/40 px-2 text-xs font-medium text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Eliminar
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop: tabla */}
+      <div className="mt-6 hidden overflow-hidden rounded-2xl border border-border bg-card md:block">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
             <tr>
@@ -148,7 +200,7 @@ function UsersPage() {
             </tr>
           </thead>
           <tbody>
-            {(users.data as Op[] | undefined ?? []).map((u) => (
+            {list.map((u) => (
               <tr key={u.id} className="border-t border-border">
                 <td className="px-4 py-3 font-medium">{u.full_name || "(sin nombre)"}</td>
                 <td className="px-4 py-3">
@@ -226,7 +278,7 @@ function UserForm({
           onSubmit({ fullName, role, password: password || undefined });
         }
       }}
-      className="mt-6 grid gap-3 rounded-2xl border border-border bg-card p-5 md:grid-cols-2"
+      className="mt-5 grid gap-3 rounded-2xl border border-border bg-card p-4 md:mt-6 md:grid-cols-2 md:p-5"
     >
       <p className="md:col-span-2 text-sm font-semibold text-foreground">
         {mode === "create" ? "Nuevo usuario" : "Editar usuario"}

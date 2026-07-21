@@ -46,12 +46,12 @@ function AuthPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-hero p-6">
+    <div className="flex min-h-dvh items-center justify-center bg-gradient-hero p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:p-6">
       <div className="w-full max-w-md">
-        <Link to="/staff" className="mb-6 inline-flex items-center gap-2 text-sm text-white/80 hover:text-white">
+        <Link to="/staff" className="mb-5 inline-flex min-h-10 items-center gap-2 text-sm text-white/80 hover:text-white sm:mb-6">
           <ArrowLeft className="h-4 w-4" /> Volver a funcionarios
         </Link>
-        <div className="rounded-3xl border border-white/10 bg-card p-8 shadow-elegant">
+        <div className="rounded-3xl border border-white/10 bg-card p-6 shadow-elegant sm:p-8">
           <div className="flex items-center gap-3">
             <img src="/sigat-icon.png" alt="SIGAT" className="h-11 w-11 rounded-xl shadow-elegant" />
             <div>
@@ -65,7 +65,7 @@ function AuthPage() {
               <input
                 type="email" required autoComplete="email"
                 value={email} onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                className="mt-1 min-h-11 w-full rounded-lg border border-input bg-background px-3 py-2.5 outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
               />
             </div>
             <div>
@@ -73,12 +73,12 @@ function AuthPage() {
               <input
                 type="password" required autoComplete="current-password"
                 value={password} onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                className="mt-1 min-h-11 w-full rounded-lg border border-input bg-background px-3 py-2.5 outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
               />
             </div>
             <button
               disabled={loading}
-              className="w-full rounded-lg bg-gradient-primary py-2.5 font-semibold text-primary-foreground shadow-elegant transition hover:brightness-105 disabled:opacity-50"
+              className="min-h-12 w-full rounded-lg bg-gradient-primary py-3 font-semibold text-primary-foreground shadow-elegant transition hover:brightness-105 disabled:opacity-50"
             >
               {loading ? "Ingresando..." : "Ingresar"}
             </button>

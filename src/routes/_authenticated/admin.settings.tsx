@@ -148,11 +148,11 @@ function SettingsPage() {
   }
 
   return (
-    <div className="p-6 md:p-10">
-      <h1 className="text-3xl font-extrabold">Configuración</h1>
+    <div className="p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:p-10">
+      <h1 className="text-2xl font-extrabold md:text-3xl">Configuración</h1>
       <p className="text-sm text-muted-foreground">Horarios, pantalla, video, sonidos y QR de acceso</p>
 
-      <div className="mt-6 grid gap-6 md:grid-cols-2">
+      <div className="mt-5 grid gap-4 md:mt-6 md:grid-cols-2 md:gap-6">
         <Card title="Horario de atención">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Inicio"><input type="time" value={hoursStart} onChange={(e) => setHoursStart(e.target.value)} className="input" /></Field>
@@ -281,26 +281,26 @@ function SettingsPage() {
               <p className="text-xs text-muted-foreground">
                 El contribuyente escanea este código y va directo a sacar turno.
               </p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                 <button
                   type="button"
                   disabled={!qrDataUrl}
                   onClick={downloadQr}
-                  className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-accent disabled:opacity-50"
+                  className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-accent disabled:opacity-50 sm:w-auto"
                 >
                   <Download className="h-4 w-4" /> Descargar PNG
                 </button>
                 <button
                   type="button"
                   onClick={() => void copyUrl()}
-                  className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-accent"
+                  className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-accent sm:w-auto"
                 >
                   <Copy className="h-4 w-4" /> Copiar URL turno
                 </button>
                 <button
                   type="button"
                   onClick={() => void copyStaffUrl()}
-                  className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-accent"
+                  className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-accent sm:w-auto"
                 >
                   <Copy className="h-4 w-4" /> Copiar URL funcionarios
                 </button>
@@ -317,18 +317,23 @@ function SettingsPage() {
         </Card>
       </div>
 
-      <button onClick={save} disabled={loading || uploading} className="mt-6 inline-flex items-center gap-2 rounded-full bg-gradient-primary px-6 py-2.5 font-semibold text-primary-foreground shadow-elegant disabled:opacity-50">
+      <button
+        type="button"
+        onClick={save}
+        disabled={loading || uploading}
+        className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-primary px-6 py-3 font-semibold text-primary-foreground shadow-elegant disabled:opacity-50 sm:mt-6 sm:w-auto sm:py-2.5"
+      >
         <Save className="h-4 w-4" /> {loading ? "Guardando..." : "Guardar cambios"}
       </button>
 
-      <style>{`.input { width:100%; border:1px solid var(--input); border-radius: 0.5rem; padding: 0.5rem 0.75rem; background: var(--background); outline: none; margin-top: 0.25rem; }`}</style>
+      <style>{`.input { width:100%; border:1px solid var(--input); border-radius: 0.5rem; padding: 0.625rem 0.75rem; background: var(--background); outline: none; margin-top: 0.25rem; min-height: 2.5rem; }`}</style>
     </div>
   );
 }
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
+    <div className="rounded-2xl border border-border bg-card p-4 md:p-5">
       <h3 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">{title}</h3>
       <div className="mt-3 space-y-3">{children}</div>
     </div>

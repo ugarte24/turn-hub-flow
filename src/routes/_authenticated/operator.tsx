@@ -19,6 +19,7 @@ type TicketRow = {
   created_at: string; called_at: string | null;
   area?: { name: string } | null; procedure?: { name: string } | null;
   service_point_id: string | null; operator_id: string | null;
+  service_point?: { name: string } | null;
 };
 
 function OperatorPage() {
@@ -31,7 +32,6 @@ function OperatorPage() {
   const callFn = useServerFn(callNextTicket);
   const upFn = useServerFn(updateTicketStatus);
 
-  // Limpia selección manual antigua
   useEffect(() => {
     localStorage.removeItem("sigat_sp");
   }, []);
@@ -83,10 +83,11 @@ function OperatorPage() {
   );
 
   const queueCount = useMemo(() => (tickets.data as TicketRow[] | undefined)?.filter((t) => t.status === "waiting").length ?? 0, [tickets.data]);
+  const dayTickets = ((tickets.data as TicketRow[] | undefined) ?? []).slice(0, 20);
 
   if (sps.isLoading) {
     return (
-      <div className="mx-auto max-w-lg p-6 md:p-10">
+      <div className="mx-auto max-w-lg p-4 md:p-10">
         <p className="text-sm text-muted-foreground">Cargando puesto de atención…</p>
       </div>
     );
@@ -94,10 +95,10 @@ function OperatorPage() {
 
   if (!assignedSp) {
     return (
-      <div className="mx-auto max-w-lg p-6 md:p-10">
-        <div className="rounded-2xl border border-dashed border-border bg-card p-8 text-center">
+      <div className="mx-auto max-w-lg p-4 md:p-10">
+        <div className="rounded-2xl border border-dashed border-border bg-card p-6 text-center md:p-8">
           <Building2 className="mx-auto h-10 w-10 text-muted-foreground" />
-          <h1 className="mt-4 text-2xl font-bold">Sin puesto asignado</h1>
+          <h1 className="mt-4 text-xl font-bold md:text-2xl">Sin puesto asignado</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Tu usuario no tiene un puesto de atención vinculado. Un administrador debe asignarte uno en la sección Puestos.
           </p>
@@ -107,33 +108,36 @@ function OperatorPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl p-6 md:p-10">
+    <div className="mx-auto max-w-4xl space-y-5 p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:space-y-6 md:p-10">
       <div>
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">Puesto de atención</p>
-        <h1 className="text-3xl font-extrabold">{assignedSp.name}</h1>
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground md:text-xs">Puesto de atención</p>
+        <h1 className="text-2xl font-extrabold leading-tight md:text-3xl">{assignedSp.name}</h1>
         {!assignedSp.active && (
           <p className="mt-1 text-sm text-destructive">Este puesto está inactivo.</p>
         )}
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 md:gap-4">
         <Stat label="En espera" value={queueCount} />
-        <Stat label="Mi turno actual" value={myCalling ? formatTicketCode(myCalling.code) : "—"} />
-        <Stat label="Estado" value={myCalling ? (myCalling.status === "calling" ? "Llamando" : "En atención") : "Libre"} />
+        <Stat label="Mi turno" value={myCalling ? formatTicketCode(myCalling.code) : "—"} highlight />
+        <Stat label="Estado" value={myCalling ? (myCalling.status === "calling" ? "Llamando" : "Atención") : "Libre"} />
       </div>
 
       {myCalling ? (
-        <div className="mt-6 rounded-3xl border-2 border-primary/40 bg-gradient-to-b from-primary/5 to-transparent p-8">
+        <div className="rounded-2xl border-2 border-primary/40 bg-gradient-to-b from-primary/5 to-transparent p-4 md:rounded-3xl md:p-8">
           <div className="text-center">
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">Ticket actual</p>
-            <p className="mt-2 font-ticket text-7xl font-black text-primary">{formatTicketCode(myCalling.code)}</p>
-            <div className="mt-3 flex flex-wrap justify-center gap-2 text-sm">
-              <span className="rounded-full bg-accent px-3 py-1 font-medium">{myCalling.area?.name}</span>
-              <span className="rounded-full bg-accent px-3 py-1 font-medium">{myCalling.procedure?.name}</span>
-              <span className="rounded-full border border-border px-3 py-1">CI: {myCalling.ci}</span>
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground md:text-xs">Ticket actual</p>
+            <p className="mt-1 font-ticket text-6xl font-black leading-none text-primary md:mt-2 md:text-7xl">
+              {formatTicketCode(myCalling.code)}
+            </p>
+            <div className="mt-3 flex flex-wrap justify-center gap-1.5 text-xs md:mt-3 md:gap-2 md:text-sm">
+              <span className="rounded-full bg-accent px-2.5 py-1 font-medium md:px-3">{myCalling.area?.name}</span>
+              <span className="rounded-full bg-accent px-2.5 py-1 font-medium md:px-3">{myCalling.procedure?.name}</span>
+              <span className="rounded-full border border-border px-2.5 py-1 md:px-3">CI: {myCalling.ci}</span>
             </div>
           </div>
-          <div className="mt-6 grid grid-cols-2 gap-2 md:grid-cols-4">
+
+          <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2 md:mt-6 md:grid-cols-4">
             <ActionBtn onClick={() => doUpdate.mutate({ id: myCalling.id, status: "calling" })} icon={RefreshCcw} label="Repetir llamado" />
             {myCalling.status === "calling" && (
               <ActionBtn primary onClick={() => doUpdate.mutate({ id: myCalling.id, status: "in_service" })} icon={PlayCircle} label="Iniciar atención" />
@@ -144,21 +148,44 @@ function OperatorPage() {
           </div>
         </div>
       ) : (
-        <div className="mt-6 rounded-3xl border border-dashed border-border p-10 text-center">
-          <p className="text-lg text-muted-foreground">No estás atendiendo a nadie</p>
+        <div className="rounded-2xl border border-dashed border-border p-6 text-center md:rounded-3xl md:p-10">
+          <p className="text-base text-muted-foreground md:text-lg">No estás atendiendo a nadie</p>
           <button
+            type="button"
             onClick={() => callNext.mutate()}
             disabled={callNext.isPending || !assignedSp.active}
-            className="mt-4 inline-flex items-center gap-2 rounded-full bg-gradient-primary px-8 py-3.5 text-lg font-semibold text-primary-foreground shadow-elegant hover:brightness-105 disabled:opacity-50"
+            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-primary px-6 py-4 text-base font-semibold text-primary-foreground shadow-elegant hover:brightness-105 disabled:opacity-50 md:w-auto md:rounded-full md:px-8 md:py-3.5 md:text-lg"
           >
             <PhoneCall className="h-5 w-5" /> {callNext.isPending ? "Llamando..." : "Llamar siguiente"}
           </button>
         </div>
       )}
 
-      <div className="mt-8">
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Cola del día</h2>
-        <div className="mt-3 overflow-hidden rounded-2xl border border-border bg-card">
+      <div>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground md:text-sm">Cola del día</h2>
+
+        {/* Móvil: tarjetas */}
+        <div className="mt-3 space-y-2 md:hidden">
+          {dayTickets.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+              Sin turnos hoy
+            </p>
+          ) : (
+            dayTickets.map((t) => (
+              <div key={t.id} className="rounded-2xl border border-border bg-card px-3.5 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="font-ticket text-xl font-bold text-primary">{formatTicketCode(t.code)}</span>
+                  <StatusPill s={t.status} />
+                </div>
+                <p className="mt-1 text-sm font-medium leading-snug">{t.procedure?.name ?? "—"}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{t.service_point?.name ?? "Sin puesto"}</p>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop: tabla */}
+        <div className="mt-3 hidden overflow-hidden rounded-2xl border border-border bg-card md:block">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
@@ -169,14 +196,12 @@ function OperatorPage() {
               </tr>
             </thead>
             <tbody>
-              {((tickets.data as TicketRow[] | undefined) ?? []).slice(0, 20).map((t) => (
+              {dayTickets.map((t) => (
                 <tr key={t.id} className="border-t border-border">
                   <td className="px-4 py-2 font-ticket font-bold">{formatTicketCode(t.code)}</td>
                   <td className="px-4 py-2">{t.procedure?.name}</td>
                   <td className="px-4 py-2"><StatusPill s={t.status} /></td>
-                  <td className="px-4 py-2 text-muted-foreground">
-                    {(t as unknown as { service_point?: { name: string } }).service_point?.name ?? "—"}
-                  </td>
+                  <td className="px-4 py-2 text-muted-foreground">{t.service_point?.name ?? "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -187,11 +212,13 @@ function OperatorPage() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string | number }) {
+function Stat({ label, value, highlight }: { label: string; value: string | number; highlight?: boolean }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
-      <p className="text-xs uppercase tracking-widest text-muted-foreground">{label}</p>
-      <p className="mt-1 text-3xl font-extrabold">{value}</p>
+    <div className={`rounded-xl border border-border bg-card p-3 md:rounded-2xl md:p-5 ${highlight ? "border-primary/30 bg-primary/5" : ""}`}>
+      <p className="text-[9px] uppercase tracking-widest text-muted-foreground md:text-xs">{label}</p>
+      <p className={`mt-0.5 font-extrabold leading-none md:mt-1 ${highlight ? "font-ticket text-2xl text-primary md:text-3xl" : "text-xl md:text-3xl"}`}>
+        {value}
+      </p>
     </div>
   );
 }
@@ -204,8 +231,12 @@ function ActionBtn({ onClick, icon: Icon, label, primary, variant }: { onClick: 
     : variant === "destructive" ? "bg-destructive text-destructive-foreground hover:brightness-105"
     : "border border-border bg-background hover:bg-accent";
   return (
-    <button onClick={onClick} className={`inline-flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold transition ${cls}`}>
-      <Icon className="h-4 w-4" /> {label}
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold transition md:min-h-0 ${cls}`}
+    >
+      <Icon className="h-4 w-4 shrink-0" /> {label}
     </button>
   );
 }
@@ -220,5 +251,5 @@ function StatusPill({ s }: { s: string }) {
     cancelled: { label: "Cancelado", cls: "bg-destructive/10 text-destructive" },
   };
   const m = map[s] ?? { label: s, cls: "bg-muted" };
-  return <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${m.cls}`}>{m.label}</span>;
+  return <span className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium md:text-xs ${m.cls}`}>{m.label}</span>;
 }

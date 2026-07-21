@@ -49,28 +49,31 @@ function ServicePointsPage() {
     (spp.data ?? []).filter((r) => r.service_point_id === id).map((r) => r.procedure_id);
 
   return (
-    <div className="p-6 md:p-10">
-      <div className="flex items-center justify-between">
+    <div className="p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:p-10">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold">Puestos de atención</h1>
+          <h1 className="text-2xl font-extrabold md:text-3xl">Puestos de atención</h1>
           <p className="text-sm text-muted-foreground">Configura ventanillas, operadores y trámites asignados</p>
         </div>
-        <button onClick={() => setEditing({ id: "", name: "", active: true, operator_id: null } as SP)}
-          className="inline-flex items-center gap-2 rounded-full bg-gradient-primary px-4 py-2 text-primary-foreground shadow-elegant">
+        <button
+          type="button"
+          onClick={() => setEditing({ id: "", name: "", active: true, operator_id: null } as SP)}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-elegant sm:w-auto"
+        >
           <Plus className="h-4 w-4" /> Nuevo puesto
         </button>
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
+      <div className="mt-5 grid gap-3 md:mt-6 md:grid-cols-2 md:gap-4">
         {(sps.data ?? []).map((sp) => {
           const pids = currentProcIds(sp.id);
           const operator = ((ops.data as { id: string; full_name: string }[] | undefined) ?? [])
             .find((o) => o.id === sp.operator_id);
           return (
-            <div key={sp.id} className="rounded-2xl border border-border bg-card p-5">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="text-lg font-bold">{sp.name}</h3>
+            <div key={sp.id} className="rounded-2xl border border-border bg-card p-4 md:p-5">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold md:text-lg">{sp.name}</h3>
                   <p className="text-xs text-muted-foreground">{sp.active ? "Activo" : "Inactivo"}</p>
                   <p className="mt-1 text-sm">
                     <span className="text-muted-foreground">Operador: </span>
@@ -79,9 +82,9 @@ function ServicePointsPage() {
                     </span>
                   </p>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => setEditing(sp)} className="rounded-md border border-border px-3 py-1 text-xs hover:bg-accent">Editar</button>
-                  <button onClick={() => confirm("¿Eliminar puesto?") && del.mutate(sp.id)} className="rounded-md border border-destructive/40 px-3 py-1 text-xs text-destructive hover:bg-destructive/10">
+                <div className="flex shrink-0 gap-2">
+                  <button type="button" onClick={() => setEditing(sp)} className="rounded-md border border-border px-3 py-1.5 text-xs hover:bg-accent">Editar</button>
+                  <button type="button" onClick={() => confirm("¿Eliminar puesto?") && del.mutate(sp.id)} className="rounded-md border border-destructive/40 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10">
                     <Trash2 className="h-3 w-3" />
                   </button>
                 </div>
@@ -136,17 +139,18 @@ function SPForm({
   const sortedAreas = [...areas].sort((a, b) => a.sort_order - b.sort_order);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-card p-6 shadow-elegant">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4">
+      <div className="flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-2xl bg-card shadow-elegant sm:rounded-2xl">
+        <div className="overflow-y-auto p-5 md:p-6">
         <h2 className="text-xl font-bold">{initial.id ? "Editar puesto" : "Nuevo puesto"}</h2>
         <div className="mt-4 space-y-3">
           <div>
             <label className="text-sm font-medium">Nombre</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 outline-none focus:border-ring" />
+            <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2.5 outline-none focus:border-ring" />
           </div>
           <div>
             <label className="text-sm font-medium">Operador asignado (opcional)</label>
-            <select value={operatorId ?? ""} onChange={(e) => setOperatorId(e.target.value || null)} className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2">
+            <select value={operatorId ?? ""} onChange={(e) => setOperatorId(e.target.value || null)} className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2.5">
               <option value="">— Ninguno —</option>
               {operators.map((o) => <option key={o.id} value={o.id}>{o.full_name || o.id.slice(0, 8)}</option>)}
             </select>
@@ -156,7 +160,7 @@ function SPForm({
           </label>
           <div>
             <label className="text-sm font-medium">Trámites atendidos</label>
-            <div className="mt-2 max-h-60 space-y-3 overflow-auto rounded-lg border border-border p-2">
+            <div className="mt-2 max-h-48 space-y-3 overflow-auto rounded-lg border border-border p-2 sm:max-h-60">
               {sortedAreas.map((area) => {
                 const areaProcs = procs.filter((p) => p.area_id === area.id);
                 if (areaProcs.length === 0) return null;
@@ -167,7 +171,7 @@ function SPForm({
                     </p>
                     <div className="space-y-1">
                       {areaProcs.map((p) => (
-                        <label key={p.id} className="flex items-center gap-2 rounded px-2 py-1 hover:bg-accent">
+                        <label key={p.id} className="flex min-h-10 items-center gap-2 rounded px-2 py-1.5 hover:bg-accent">
                           <input
                             type="checkbox"
                             checked={pids.includes(p.id)}
@@ -187,10 +191,11 @@ function SPForm({
             </div>
           </div>
         </div>
-        <div className="mt-5 flex justify-end gap-2">
-          <button onClick={onCancel} className="rounded-lg border border-border px-4 py-2 text-sm">Cancelar</button>
-          <button onClick={() => onSave({ name, active, operatorId, procedureIds: pids })} disabled={loading || !name.trim()}
-            className="inline-flex items-center gap-2 rounded-lg bg-gradient-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-elegant disabled:opacity-50">
+        </div>
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border p-4 sm:flex-row sm:justify-end">
+          <button type="button" onClick={onCancel} className="rounded-lg border border-border px-4 py-2.5 text-sm">Cancelar</button>
+          <button type="button" onClick={() => onSave({ name, active, operatorId, procedureIds: pids })} disabled={loading || !name.trim()}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-elegant disabled:opacity-50">
             <Save className="h-4 w-4" /> {loading ? "Guardando..." : "Guardar"}
           </button>
         </div>
