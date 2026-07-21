@@ -116,6 +116,8 @@ async function unlockTvAudio(): Promise<boolean> {
     g.connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + 0.01);
+    // Algunos navegadores tardan un tick en pasar a running
+    if (ctx.state !== "running") await ctx.resume();
     return ctx.state === "running";
   } catch {
     return false;
@@ -123,12 +125,7 @@ async function unlockTvAudio(): Promise<boolean> {
 }
 
 /** Ding corto (un solo tono) antes del anuncio de voz. */
-let lastDingAt = 0;
 function playCallDing() {
-  const nowWall = Date.now();
-  if (nowWall - lastDingAt < 1200) return;
-  lastDingAt = nowWall;
-
   const ctx = getTvAudioContext();
   if (!ctx) return;
 
@@ -139,9 +136,9 @@ function playCallDing() {
       const g = ctx.createGain();
       osc.type = "sine";
       osc.frequency.setValueAtTime(988, now);
-      g.gain.setValueAtTime(0.0001, now);
-      g.gain.exponentialRampToValueAtTime(0.55, now + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(0.55, now + 0.02);
+      g.gain.linearRampToValueAtTime(0, now + 0.35);
       osc.connect(g);
       g.connect(ctx.destination);
       osc.start(now);
@@ -150,9 +147,7 @@ function playCallDing() {
   };
 
   if (ctx.state === "suspended") {
-    void ctx.resume().then(() => {
-      if (ctx.state === "running") play();
-    });
+    void ctx.resume().then(() => play());
     return;
   }
   play();
@@ -171,31 +166,29 @@ function callAnnounceKey(id: string, calledAt: string) {
   return `${id}:${sec}`;
 }
 
-/** Una sola cola global: un ding + una voz por llamado (sin cancel/retry de React). */
+/** Una sola cola global: un ding + una voz por llamado. */
 const announcedCallKeys = new Set<string>();
 let announceChain: Promise<void> = Promise.resolve();
-let lastSpokenText = "";
-let lastSpokenAt = 0;
+let announcing = false;
 
 function speakOnce(text: string): Promise<void> {
   return new Promise((resolve) => {
     try {
-      const now = Date.now();
-      if (text === lastSpokenText && now - lastSpokenAt < 5000) {
+      if (typeof window === "undefined" || !window.speechSynthesis) {
         resolve();
         return;
       }
-      lastSpokenText = text;
-      lastSpokenAt = now;
 
+      const synth = window.speechSynthesis;
       const msg = new SpeechSynthesisUtterance(text);
       msg.lang = "es-ES";
-      msg.rate = 0.8;
+      msg.rate = 0.85;
       msg.volume = 1;
       msg.pitch = 1;
 
-      const voices = speechSynthesis.getVoices();
+      const voices = synth.getVoices();
       const esVoice =
+        voices.find((v) => v.lang.toLowerCase() === "es-bo") ||
         voices.find((v) => v.lang.toLowerCase() === "es-es") ||
         voices.find((v) => v.lang.toLowerCase().startsWith("es")) ||
         null;
@@ -210,12 +203,9 @@ function speakOnce(text: string): Promise<void> {
       msg.onend = done;
       msg.onerror = done;
 
-      // Hack Chrome/Edge Windows: sin esto la misma frase a veces se oye 2 veces
-      speechSynthesis.speak(msg);
-      speechSynthesis.pause();
-      speechSynthesis.resume();
-
-      window.setTimeout(done, 10_000);
+      // Hablar una sola vez, sin cancel/pause (rompe el audio en Chrome/Edge)
+      synth.speak(msg);
+      window.setTimeout(done, 12_000);
     } catch {
       resolve();
     }
@@ -228,13 +218,20 @@ function enqueueCallAnnounce(key: string, code: string, desk: string) {
 
   announceChain = announceChain
     .then(async () => {
-      playCallDing();
-      await sleep(480);
-      await speakOnce(`${code}, pasar a ${desk}`);
-      await sleep(400);
+      if (announcing) await sleep(300);
+      announcing = true;
+      try {
+        await unlockTvAudio();
+        playCallDing();
+        await sleep(500);
+        await speakOnce(`${code}, pasar a ${desk}`);
+        await sleep(350);
+      } finally {
+        announcing = false;
+      }
     })
     .catch(() => {
-      /* ignore */
+      announcing = false;
     });
 }
 
@@ -242,37 +239,31 @@ function DisplayPage() {
   const [tickets, setTickets] = useState<TicketRow[]>([]);
   const [now, setNow] = useState(new Date());
   const [tv, setTv] = useState<TvSettings>(defaultTv);
-  const [soundReady, setSoundReady] = useState(() => {
-    try {
-      return sessionStorage.getItem("sigat_tv_sound") === "1";
-    } catch {
-      return false;
-    }
-  });
 
+  // Desbloquea audio en silencio (sin overlay) ante cualquier interacción / al cargar
   useEffect(() => {
-    if (!soundReady) return;
-    void unlockTvAudio().then((ok) => {
-      if (!ok) setSoundReady(false);
-    });
-  }, [soundReady]);
+    void unlockTvAudio();
+    try {
+      const synth = window.speechSynthesis;
+      synth.getVoices();
+      if (synth.paused) synth.resume();
+    } catch { /* ignore */ }
 
-  async function enableSound() {
-    const ok = await unlockTvAudio();
-    if (!ok) return;
-    try {
-      sessionStorage.setItem("sigat_tv_sound", "1");
-    } catch { /* ignore */ }
-    // Precarga voces (Chrome las entrega async)
-    try {
-      speechSynthesis.getVoices();
-      window.speechSynthesis.onvoiceschanged = () => {
-        speechSynthesis.getVoices();
-      };
-    } catch { /* ignore */ }
-    setSoundReady(true);
-    playCallDing();
-  }
+    const unlock = () => {
+      void unlockTvAudio();
+      try {
+        const synth = window.speechSynthesis;
+        if (synth.paused) synth.resume();
+        synth.getVoices();
+      } catch { /* ignore */ }
+    };
+    window.addEventListener("pointerdown", unlock, { passive: true });
+    window.addEventListener("keydown", unlock);
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -341,10 +332,10 @@ function DisplayPage() {
     .join("|");
 
   useEffect(() => {
-    if (!tv.voiceEnabled || !soundReady) return;
+    if (!tv.voiceEnabled) return;
 
     const nowMs = Date.now();
-    const FRESH_MS = 20_000;
+    const FRESH_MS = 45_000;
 
     const fresh = calling
       .filter((t) => t.called_at)
@@ -370,24 +361,10 @@ function DisplayPage() {
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- calling se refleja en callingSignature
-  }, [callingSignature, tv.voiceEnabled, soundReady]);
+  }, [callingSignature, tv.voiceEnabled]);
 
   return (
     <div className="relative h-screen max-h-screen overflow-hidden bg-gradient-tv text-white">
-      {!soundReady && tv.voiceEnabled && (
-        <button
-          type="button"
-          onClick={() => void enableSound()}
-          className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-black/80 px-6 text-center backdrop-blur-sm"
-        >
-          <Volume2 className="h-16 w-16 text-primary-glow" />
-          <p className="text-2xl font-extrabold md:text-4xl">Tocá la pantalla para activar el sonido</p>
-          <p className="max-w-md text-sm text-white/70 md:text-base">
-            El navegador exige un toque para permitir el ding y la voz de los llamados.
-          </p>
-        </button>
-      )}
-
       <div className="grid h-full grid-cols-1 md:grid-cols-[1.55fr_1fr]">
       {/* Izquierda: cabecera + video horizontal + pie */}
       <section className="flex min-h-0 flex-col border-b border-white/10 md:border-b-0 md:border-r md:border-white/10">
