@@ -361,13 +361,13 @@ function DisplayPage() {
                     }`}
                   >
                     <span
-                      className={`shrink-0 font-ticket text-[clamp(2.75rem,7.5vh,5.5rem)] font-black leading-none text-primary-glow ${
+                      className={`shrink-0 font-ticket text-[clamp(3.5rem,11vh,7.5rem)] font-black leading-none text-primary-glow ${
                         isAnimating ? "animate-tv-call-code-burst" : ""
                       }`}
                     >
                       {formatTicketCode(t.code)}
                     </span>
-                    <span className="min-w-0 truncate text-right text-base font-semibold uppercase tracking-wide text-white/85 md:text-xl lg:text-2xl">
+                    <span className="min-w-0 truncate text-right text-xl font-bold uppercase tracking-wide text-white/90 md:text-3xl lg:text-4xl">
                       {t.service_point?.name ?? "—"}
                     </span>
                   </li>
