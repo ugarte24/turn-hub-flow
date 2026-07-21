@@ -315,6 +315,57 @@ export const createOperator = createServerFn({ method: "POST" })
     return { id: uid };
   });
 
+export const updateOperator = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: {
+    userId: string;
+    fullName: string;
+    role: "admin" | "operator" | "host";
+    password?: string;
+  }) =>
+    z.object({
+      userId: z.string().uuid(),
+      fullName: z.string().trim().min(2).max(120),
+      role: z.enum(["admin", "operator", "host"]),
+      password: z.union([z.string().min(6).max(100), z.literal("")]).optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+    if (!isAdmin) throw new Error("Solo administradores");
+
+    // No permitir quitarte el rol admin a ti mismo
+    if (data.userId === userId && data.role !== "admin") {
+      throw new Error("No puedes quitarte el rol de administrador a ti mismo");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .update({ full_name: data.fullName })
+      .eq("id", data.userId);
+    if (profileError) throw new Error(profileError.message);
+
+    const authPatch: { user_metadata: { full_name: string }; password?: string } = {
+      user_metadata: { full_name: data.fullName },
+    };
+    if (data.password && data.password.length >= 6) {
+      authPatch.password = data.password;
+    }
+    const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(data.userId, authPatch);
+    if (authError) throw new Error(authError.message);
+
+    await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
+    const { error: roleError } = await supabaseAdmin
+      .from("user_roles")
+      .insert({ user_id: data.userId, role: data.role });
+    if (roleError) throw new Error(roleError.message);
+
+    return { ok: true };
+  });
+
 export const setUserActive = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { userId: string; active: boolean }) =>
