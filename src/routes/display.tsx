@@ -268,15 +268,20 @@ function enqueueCallAnnounce(key: string, ticketId: string, code: string, desk: 
 
 function DisplayPage() {
   const [tickets, setTickets] = useState<TicketRow[]>([]);
+  const [ticketsReady, setTicketsReady] = useState(false);
   const [now, setNow] = useState(new Date());
   const [tv, setTv] = useState<TvSettings>(defaultTv);
-  const [highlightId, setHighlightId] = useState<string | null>(() => highlightingCallId);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const announceSeededRef = useRef(false);
 
   useEffect(() => {
+    // Al montar / recargar: apagar cualquier parpadeo residual
+    setHighlightingCallId(null);
+    setHighlightId(null);
     highlightListeners.add(setHighlightId);
-    setHighlightId(highlightingCallId);
     return () => {
       highlightListeners.delete(setHighlightId);
+      setHighlightingCallId(null);
     };
   }, []);
 
@@ -314,7 +319,10 @@ function DisplayPage() {
     let mounted = true;
     async function loadTickets() {
       const data = await fetchTodayTickets();
-      if (mounted) setTickets(data as TicketRow[]);
+      if (mounted) {
+        setTickets(data as TicketRow[]);
+        setTicketsReady(true);
+      }
     }
     async function loadSettings() {
       const { data } = await supabase.from("settings").select("*");
@@ -372,10 +380,17 @@ function DisplayPage() {
     .join("|");
 
   useEffect(() => {
-    if (!tv.voiceEnabled) return;
+    if (!tv.voiceEnabled || !ticketsReady) return;
 
-    const nowMs = Date.now();
-    const FRESH_MS = 45_000;
+    // Primera carga tras recargar: no re-anunciar ni parpadear turnos ya en pantalla
+    if (!announceSeededRef.current) {
+      for (const t of calling) {
+        if (t.called_at) announcedCallKeys.add(callAnnounceKey(t.id, t.called_at));
+      }
+      announceSeededRef.current = true;
+      setHighlightingCallId(null);
+      return;
+    }
 
     const fresh = calling
       .filter((t) => t.called_at)
@@ -389,11 +404,6 @@ function DisplayPage() {
 
     for (const item of fresh) {
       if (announcedCallKeys.has(item.key)) continue;
-      // Al cargar la TV, no re-anuncia llamados antiguos
-      if (nowMs - item.at > FRESH_MS) {
-        announcedCallKeys.add(item.key);
-        continue;
-      }
       enqueueCallAnnounce(
         item.key,
         item.t.id,
@@ -402,7 +412,7 @@ function DisplayPage() {
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- calling se refleja en callingSignature
-  }, [callingSignature, tv.voiceEnabled]);
+  }, [callingSignature, tv.voiceEnabled, ticketsReady]);
 
   return (
     <div className="relative h-screen max-h-screen overflow-hidden bg-gradient-tv text-white">
@@ -483,17 +493,14 @@ function DisplayPage() {
           ) : (
             <ul className={`flex min-h-0 flex-1 flex-col overflow-hidden ${attendingScale.gap}`}>
               {attending.map((t) => {
-                const isCalling = t.status === "calling";
-                // Solo parpadea el turno que se está anunciando ahora (cola, no todos a la vez)
-                const isAnimating = isCalling && highlightId === t.id;
+                // Solo parpadea el turno que se está anunciando ahora
+                const isAnimating = highlightId === t.id;
                 return (
                   <li
                     key={t.id}
                     className={`grid min-h-0 min-w-0 flex-1 items-center overflow-hidden rounded-2xl border ${attendingScale.row} ${
-                      isCalling
-                        ? isAnimating
-                          ? "border-primary-glow/70 bg-primary/25 animate-tv-call-burst"
-                          : "border-primary-glow/40 bg-primary/15 shadow-[inset_0_0_24px_rgba(61,190,139,0.2)]"
+                      isAnimating
+                        ? "border-primary-glow/70 bg-primary/25 animate-tv-call-burst"
                         : "border-white/10 bg-white/5"
                     }`}
                   >
