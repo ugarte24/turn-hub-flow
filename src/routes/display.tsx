@@ -24,6 +24,53 @@ function abbreviateDeskName(name: string | null | undefined) {
     .replace(/\brecaudaciones\b/gi, "Rec.");
 }
 
+/** Escala tipográfica de la lista “en atención” según cantidad de filas. */
+function attendingTypeScale(count: number) {
+  if (count <= 2) {
+    return {
+      gap: "gap-2",
+      row: "grid-cols-[minmax(7rem,10rem)_3.25rem_1fr] gap-x-3 px-5 py-3",
+      code: "text-[clamp(3.75rem,12vh,8rem)]",
+      desk: "text-3xl md:text-4xl lg:text-5xl",
+      arrow: "h-10 w-10 md:h-12 md:w-12",
+    };
+  }
+  if (count <= 4) {
+    return {
+      gap: "gap-2",
+      row: "grid-cols-[minmax(6rem,8.5rem)_2.75rem_1fr] gap-x-3 px-4 py-2.5",
+      code: "text-[clamp(3rem,9vh,6rem)]",
+      desk: "text-2xl md:text-3xl lg:text-4xl",
+      arrow: "h-8 w-8 md:h-10 md:w-10",
+    };
+  }
+  if (count <= 6) {
+    return {
+      gap: "gap-2",
+      row: "grid-cols-[minmax(5.25rem,7rem)_2.5rem_1fr] gap-x-2 px-4 py-2",
+      code: "text-[clamp(2.5rem,7vh,4.75rem)]",
+      desk: "text-xl md:text-2xl lg:text-3xl",
+      arrow: "h-7 w-7 md:h-9 md:w-9",
+    };
+  }
+  if (count <= 8) {
+    return {
+      gap: "gap-1.5",
+      row: "grid-cols-[minmax(4.5rem,6rem)_2.25rem_1fr] gap-x-2 px-3.5 py-1.5",
+      code: "text-[clamp(2.1rem,5.5vh,3.5rem)]",
+      desk: "text-lg md:text-xl lg:text-2xl",
+      arrow: "h-6 w-6 md:h-8 md:w-8",
+    };
+  }
+  return {
+    gap: "gap-1",
+    row: "grid-cols-[minmax(3.75rem,5rem)_2rem_1fr] gap-x-1.5 px-3 py-1",
+    code: "text-[clamp(1.6rem,4vh,2.6rem)]",
+    desk: "text-base md:text-lg lg:text-xl",
+    arrow: "h-5 w-5 md:h-6 md:w-6",
+  };
+}
+
 type TvSettings = {
   institution: string;
   subtitle: string;
@@ -282,6 +329,7 @@ function DisplayPage() {
   const attending = attendingOrderRef.current
     .map((id) => attendingById.get(id))
     .filter((t): t is TicketRow => !!t);
+  const attendingScale = attendingTypeScale(attending.length);
   const showVideo = tv.videoEnabled && tv.videoUrl.trim().length > 0 && tv.videoSource !== "none";
   const waiting = tickets.filter((t) => t.status === "waiting");
   const upcoming = waiting.slice(-23).reverse();
@@ -415,7 +463,7 @@ function DisplayPage() {
               <p className="text-center text-xl text-white/50 md:text-2xl">Sin turnos en atención</p>
             </div>
           ) : (
-            <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+            <ul className={`flex min-h-0 flex-1 flex-col overflow-hidden ${attendingScale.gap}`}>
               {attending.map((t) => {
                 const isCalling = t.status === "calling";
                 const calledMs = t.called_at ? new Date(t.called_at).getTime() : 0;
@@ -423,7 +471,7 @@ function DisplayPage() {
                 return (
                   <li
                     key={t.id}
-                    className={`grid min-h-0 flex-1 grid-cols-[minmax(5.5rem,7.5rem)_2.75rem_1fr] items-center gap-x-2 rounded-2xl border px-4 py-2 md:grid-cols-[minmax(6.5rem,9rem)_3rem_1fr] md:gap-x-3 md:px-5 md:py-3 ${
+                    className={`grid min-h-0 min-w-0 flex-1 items-center overflow-hidden rounded-2xl border ${attendingScale.row} ${
                       isCalling
                         ? isAnimating
                           ? "border-primary-glow/70 bg-primary/25 animate-tv-call-burst"
@@ -432,7 +480,7 @@ function DisplayPage() {
                     }`}
                   >
                     <span
-                      className={`font-ticket text-[clamp(3.5rem,11vh,7.5rem)] font-black leading-none text-amber-300 drop-shadow-[0_0_18px_rgba(251,191,36,0.65)] ${
+                      className={`truncate font-ticket font-black leading-none text-amber-300 drop-shadow-[0_0_14px_rgba(251,191,36,0.55)] ${attendingScale.code} ${
                         isAnimating ? "animate-tv-call-code-burst" : ""
                       }`}
                     >
@@ -440,12 +488,12 @@ function DisplayPage() {
                     </span>
                     <span className="flex items-center justify-center">
                       <ArrowRight
-                        className="h-[clamp(1.75rem,5vh,3rem)] w-[clamp(1.75rem,5vh,3rem)] text-amber-300/90"
+                        className={`${attendingScale.arrow} text-amber-300/90`}
                         strokeWidth={3}
                         aria-hidden
                       />
                     </span>
-                    <span className="min-w-0 truncate text-right text-xl font-bold uppercase tracking-wide text-white/90 md:text-3xl lg:text-4xl">
+                    <span className={`min-w-0 truncate text-right font-bold uppercase tracking-wide text-white/90 ${attendingScale.desk}`}>
                       {abbreviateDeskName(t.service_point?.name)}
                     </span>
                   </li>
