@@ -29,7 +29,7 @@ function attendingTypeScale(count: number) {
   if (count <= 2) {
     return {
       gap: "gap-2",
-      row: "grid-cols-[auto_auto_minmax(0,1fr)] gap-x-3 px-4 py-3",
+      row: "grid-cols-[6.5rem_2.75rem_minmax(0,1fr)] gap-x-3 px-4 py-3 md:grid-cols-[8rem_3rem_minmax(0,1fr)]",
       code: "text-[clamp(3.25rem,10vh,6.5rem)]",
       desk: "text-2xl md:text-3xl lg:text-4xl",
       arrow: "h-9 w-9 md:h-11 md:w-11",
@@ -38,7 +38,7 @@ function attendingTypeScale(count: number) {
   if (count <= 4) {
     return {
       gap: "gap-2",
-      row: "grid-cols-[auto_auto_minmax(0,1fr)] gap-x-3 px-4 py-2.5",
+      row: "grid-cols-[5.5rem_2.5rem_minmax(0,1fr)] gap-x-3 px-4 py-2.5 md:grid-cols-[7rem_2.75rem_minmax(0,1fr)]",
       code: "text-[clamp(2.75rem,8vh,5rem)]",
       desk: "text-xl md:text-2xl lg:text-3xl",
       arrow: "h-8 w-8 md:h-10 md:w-10",
@@ -47,7 +47,7 @@ function attendingTypeScale(count: number) {
   if (count <= 6) {
     return {
       gap: "gap-2",
-      row: "grid-cols-[auto_auto_minmax(0,1fr)] gap-x-2 px-3 py-2",
+      row: "grid-cols-[4.75rem_2.25rem_minmax(0,1fr)] gap-x-2 px-3 py-2 md:grid-cols-[6rem_2.5rem_minmax(0,1fr)]",
       code: "text-[clamp(2.25rem,6.5vh,4.25rem)]",
       desk: "text-lg md:text-xl lg:text-2xl",
       arrow: "h-7 w-7 md:h-8 md:w-8",
@@ -56,7 +56,7 @@ function attendingTypeScale(count: number) {
   if (count <= 8) {
     return {
       gap: "gap-1.5",
-      row: "grid-cols-[auto_auto_minmax(0,1fr)] gap-x-2 px-3 py-1.5",
+      row: "grid-cols-[4.25rem_2rem_minmax(0,1fr)] gap-x-2 px-3 py-1.5 md:grid-cols-[5.25rem_2.25rem_minmax(0,1fr)]",
       code: "text-[clamp(1.9rem,5vh,3.25rem)]",
       desk: "text-base md:text-lg lg:text-xl",
       arrow: "h-6 w-6 md:h-7 md:w-7",
@@ -64,7 +64,7 @@ function attendingTypeScale(count: number) {
   }
   return {
     gap: "gap-1",
-    row: "grid-cols-[auto_auto_minmax(0,1fr)] gap-x-1.5 px-2.5 py-1",
+    row: "grid-cols-[3.5rem_1.75rem_minmax(0,1fr)] gap-x-1.5 px-2.5 py-1 md:grid-cols-[4.5rem_2rem_minmax(0,1fr)]",
     code: "text-[clamp(1.5rem,3.8vh,2.4rem)]",
     desk: "text-sm md:text-base lg:text-lg",
     arrow: "h-5 w-5 md:h-6 md:w-6",
@@ -166,9 +166,16 @@ function callAnnounceKey(id: string, calledAt: string) {
   return `${id}:${sec}`;
 }
 
-/** Una sola cola global: si llaman a la vez, suena uno y después el otro. */
+/** Una sola cola global: si llaman a la vez, suena (y parpadea) uno y después el otro. */
 const announcedCallKeys = new Set<string>();
 let announceChain: Promise<void> = Promise.resolve();
+let highlightingCallId: string | null = null;
+const highlightListeners = new Set<(id: string | null) => void>();
+
+function setHighlightingCallId(id: string | null) {
+  highlightingCallId = id;
+  for (const fn of highlightListeners) fn(id);
+}
 
 function waitSpeechIdle(maxMs = 15_000): Promise<void> {
   return new Promise((resolve) => {
@@ -231,26 +238,31 @@ function speakOnce(text: string): Promise<void> {
   });
 }
 
-async function playAnnounceSequence(code: string, desk: string) {
-  await unlockTvAudio();
-  // Espera a que termine cualquier voz anterior (evita solapamiento)
-  await waitSpeechIdle();
-  playCallDing();
-  await sleep(550);
-  await speakOnce(`${code}, pasar a ${desk}`);
-  await waitSpeechIdle();
-  // Pausa clara entre un llamado y el siguiente
-  await sleep(700);
+async function playAnnounceSequence(ticketId: string, code: string, desk: string) {
+  setHighlightingCallId(ticketId);
+  try {
+    await unlockTvAudio();
+    // Espera a que termine cualquier voz anterior (evita solapamiento)
+    await waitSpeechIdle();
+    playCallDing();
+    await sleep(550);
+    await speakOnce(`${code}, pasar a ${desk}`);
+    await waitSpeechIdle();
+    // Pausa clara entre un llamado y el siguiente
+    await sleep(700);
+  } finally {
+    setHighlightingCallId(null);
+  }
 }
 
-function enqueueCallAnnounce(key: string, code: string, desk: string) {
+function enqueueCallAnnounce(key: string, ticketId: string, code: string, desk: string) {
   if (announcedCallKeys.has(key)) return;
   announcedCallKeys.add(key);
 
   announceChain = announceChain
-    .then(() => playAnnounceSequence(code, desk))
+    .then(() => playAnnounceSequence(ticketId, code, desk))
     .catch(() => {
-      /* ignore: no romper la cola */
+      setHighlightingCallId(null);
     });
 }
 
@@ -258,6 +270,15 @@ function DisplayPage() {
   const [tickets, setTickets] = useState<TicketRow[]>([]);
   const [now, setNow] = useState(new Date());
   const [tv, setTv] = useState<TvSettings>(defaultTv);
+  const [highlightId, setHighlightId] = useState<string | null>(() => highlightingCallId);
+
+  useEffect(() => {
+    highlightListeners.add(setHighlightId);
+    setHighlightId(highlightingCallId);
+    return () => {
+      highlightListeners.delete(setHighlightId);
+    };
+  }, []);
 
   // Desbloquea audio en silencio (sin overlay) ante cualquier interacción / al cargar
   useEffect(() => {
@@ -375,6 +396,7 @@ function DisplayPage() {
       }
       enqueueCallAnnounce(
         item.key,
+        item.t.id,
         formatTicketCode(item.t.code),
         item.t.service_point?.name ?? "atención",
       );
@@ -462,8 +484,8 @@ function DisplayPage() {
             <ul className={`flex min-h-0 flex-1 flex-col overflow-hidden ${attendingScale.gap}`}>
               {attending.map((t) => {
                 const isCalling = t.status === "calling";
-                const calledMs = t.called_at ? new Date(t.called_at).getTime() : 0;
-                const isAnimating = isCalling && calledMs > 0 && now.getTime() - calledMs < 6000;
+                // Solo parpadea el turno que se está anunciando ahora (cola, no todos a la vez)
+                const isAnimating = isCalling && highlightId === t.id;
                 return (
                   <li
                     key={t.id}
@@ -476,13 +498,13 @@ function DisplayPage() {
                     }`}
                   >
                     <span
-                      className={`shrink-0 font-ticket font-black leading-none text-amber-300 drop-shadow-[0_0_14px_rgba(251,191,36,0.55)] ${attendingScale.code} ${
+                      className={`min-w-0 truncate font-ticket font-black leading-none text-amber-300 drop-shadow-[0_0_14px_rgba(251,191,36,0.55)] ${attendingScale.code} ${
                         isAnimating ? "animate-tv-call-code-burst" : ""
                       }`}
                     >
                       {formatTicketCode(t.code)}
                     </span>
-                    <span className="flex shrink-0 items-center justify-center">
+                    <span className="flex items-center justify-center">
                       <ArrowRight
                         className={`${attendingScale.arrow} text-amber-300/90`}
                         strokeWidth={3}
