@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchTodayTickets } from "@/lib/sigat-queries";
 import { formatTicketCode } from "@/lib/ticket-code";
-import { Volume2 } from "lucide-react";
+import { Volume2, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/display")({
   head: () => ({ meta: [{ title: "Pantalla — SIGAT" }, { name: "robots", content: "noindex" }] }),
@@ -16,6 +16,13 @@ type TicketRow = {
   procedure?: { name: string } | null;
   service_point?: { name: string } | null;
 };
+
+function abbreviateDeskName(name: string | null | undefined) {
+  if (!name) return "—";
+  return name
+    .replace(/\boperador(es)?\b/gi, "Op.")
+    .replace(/\brecaudaciones\b/gi, "Rec.");
+}
 
 type TvSettings = {
   institution: string;
@@ -68,36 +75,30 @@ async function unlockTvAudio(): Promise<boolean> {
   }
 }
 
-/** Ding corto antes del anuncio de voz. */
+/** Ding corto (un solo tono) antes del anuncio de voz. */
+let lastDingAt = 0;
 function playCallDing() {
+  const nowWall = Date.now();
+  if (nowWall - lastDingAt < 1200) return;
+  lastDingAt = nowWall;
+
   const ctx = getTvAudioContext();
   if (!ctx) return;
 
   const play = () => {
     try {
       const now = ctx.currentTime;
-      const master = ctx.createGain();
-      master.gain.setValueAtTime(0, now);
-      master.gain.linearRampToValueAtTime(0.55, now + 0.01);
-      master.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
-      master.connect(ctx.destination);
-
-      for (const [freq, start, peak] of [
-        [880, 0, 0.7],
-        [1318.5, 0.07, 0.45],
-      ] as const) {
-        const osc = ctx.createOscillator();
-        const g = ctx.createGain();
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(freq, now + start);
-        g.gain.setValueAtTime(0.0001, now + start);
-        g.gain.exponentialRampToValueAtTime(peak, now + start + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, now + start + 0.4);
-        osc.connect(g);
-        g.connect(master);
-        osc.start(now + start);
-        osc.stop(now + start + 0.45);
-      }
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(988, now);
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(0.55, now + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+      osc.connect(g);
+      g.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.4);
     } catch { /* ignore */ }
   };
 
@@ -110,8 +111,85 @@ function playCallDing() {
   play();
 }
 
-/** Claves ya anunciadas (sobrevive re-mounts de React Strict Mode). */
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+/** Clave estable: id + segundo de called_at (evita jitter de timestamp). */
+function callAnnounceKey(id: string, calledAt: string) {
+  const ms = new Date(calledAt).getTime();
+  const sec = Number.isFinite(ms) ? Math.floor(ms / 1000) : calledAt;
+  return `${id}:${sec}`;
+}
+
+/** Una sola cola global: un ding + una voz por llamado (sin cancel/retry de React). */
 const announcedCallKeys = new Set<string>();
+let announceChain: Promise<void> = Promise.resolve();
+let lastSpokenText = "";
+let lastSpokenAt = 0;
+
+function speakOnce(text: string): Promise<void> {
+  return new Promise((resolve) => {
+    try {
+      const now = Date.now();
+      if (text === lastSpokenText && now - lastSpokenAt < 5000) {
+        resolve();
+        return;
+      }
+      lastSpokenText = text;
+      lastSpokenAt = now;
+
+      const msg = new SpeechSynthesisUtterance(text);
+      msg.lang = "es-ES";
+      msg.rate = 0.8;
+      msg.volume = 1;
+      msg.pitch = 1;
+
+      const voices = speechSynthesis.getVoices();
+      const esVoice =
+        voices.find((v) => v.lang.toLowerCase() === "es-es") ||
+        voices.find((v) => v.lang.toLowerCase().startsWith("es")) ||
+        null;
+      if (esVoice) msg.voice = esVoice;
+
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      msg.onend = done;
+      msg.onerror = done;
+
+      // Hack Chrome/Edge Windows: sin esto la misma frase a veces se oye 2 veces
+      speechSynthesis.speak(msg);
+      speechSynthesis.pause();
+      speechSynthesis.resume();
+
+      window.setTimeout(done, 10_000);
+    } catch {
+      resolve();
+    }
+  });
+}
+
+function enqueueCallAnnounce(key: string, code: string, desk: string) {
+  if (announcedCallKeys.has(key)) return;
+  announcedCallKeys.add(key);
+
+  announceChain = announceChain
+    .then(async () => {
+      playCallDing();
+      await sleep(480);
+      await speakOnce(`${code}, pasar a ${desk}`);
+      await sleep(400);
+    })
+    .catch(() => {
+      /* ignore */
+    });
+}
 
 function DisplayPage() {
   const [tickets, setTickets] = useState<TicketRow[]>([]);
@@ -137,6 +215,13 @@ function DisplayPage() {
     if (!ok) return;
     try {
       sessionStorage.setItem("sigat_tv_sound", "1");
+    } catch { /* ignore */ }
+    // Precarga voces (Chrome las entrega async)
+    try {
+      speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => {
+        speechSynthesis.getVoices();
+      };
     } catch { /* ignore */ }
     setSoundReady(true);
     playCallDing();
@@ -199,59 +284,36 @@ function DisplayPage() {
     .join("|");
 
   useEffect(() => {
-    if (!tv.voiceEnabled) return;
+    if (!tv.voiceEnabled || !soundReady) return;
 
     const nowMs = Date.now();
     const FRESH_MS = 20_000;
-    const pending: { t: TicketRow; key: string; at: number }[] = [];
 
-    for (const t of calling) {
-      if (!t.called_at) continue;
-      const key = `${t.id}:${t.called_at}`;
-      if (announcedCallKeys.has(key)) continue;
-      const at = new Date(t.called_at).getTime();
+    const fresh = calling
+      .filter((t) => t.called_at)
+      .map((t) => {
+        const calledAt = t.called_at!;
+        const key = callAnnounceKey(t.id, calledAt);
+        const at = new Date(calledAt).getTime();
+        return { t, key, at };
+      })
+      .sort((a, b) => a.at - b.at);
+
+    for (const item of fresh) {
+      if (announcedCallKeys.has(item.key)) continue;
       // Al cargar la TV, no re-anuncia llamados antiguos
-      if (nowMs - at > FRESH_MS) {
-        announcedCallKeys.add(key);
+      if (nowMs - item.at > FRESH_MS) {
+        announcedCallKeys.add(item.key);
         continue;
       }
-      pending.push({ t, key, at });
-    }
-
-    // Limpia claves de turnos que ya no están llamando
-    const live = new Set(calling.map((t) => `${t.id}:${t.called_at ?? ""}`));
-    for (const k of [...announcedCallKeys]) {
-      if (!live.has(k)) announcedCallKeys.delete(k);
-    }
-
-    if (!pending.length) return;
-
-    // Marca ya como anunciados para no repetir aunque el efecto se re-dispare
-    for (const item of pending) announcedCallKeys.add(item.key);
-
-    pending.sort((a, b) => a.at - b.at);
-    speechSynthesis.cancel();
-
-    let delayMs = 0;
-    for (const item of pending) {
-      const speakAt = delayMs;
-      const code = formatTicketCode(item.t.code);
-      const desk = item.t.service_point?.name ?? "atención";
-      window.setTimeout(() => {
-        playCallDing();
-        window.setTimeout(() => {
-          try {
-            const msg = new SpeechSynthesisUtterance(`${code}, pasar a ${desk}`);
-            msg.lang = "es-ES";
-            msg.rate = 0.8;
-            speechSynthesis.speak(msg);
-          } catch { /* ignore */ }
-        }, 550);
-      }, speakAt);
-      delayMs += 2800;
+      enqueueCallAnnounce(
+        item.key,
+        formatTicketCode(item.t.code),
+        item.t.service_point?.name ?? "atención",
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- calling se refleja en callingSignature
-  }, [callingSignature, tv.voiceEnabled]);
+  }, [callingSignature, tv.voiceEnabled, soundReady]);
 
   return (
     <div className="relative h-screen max-h-screen overflow-hidden bg-gradient-tv text-white">
@@ -361,14 +423,19 @@ function DisplayPage() {
                     }`}
                   >
                     <span
-                      className={`shrink-0 font-ticket text-[clamp(3.5rem,11vh,7.5rem)] font-black leading-none text-primary-glow ${
+                      className={`shrink-0 font-ticket text-[clamp(3.5rem,11vh,7.5rem)] font-black leading-none text-amber-300 drop-shadow-[0_0_18px_rgba(251,191,36,0.65)] ${
                         isAnimating ? "animate-tv-call-code-burst" : ""
                       }`}
                     >
                       {formatTicketCode(t.code)}
                     </span>
-                    <span className="min-w-0 truncate text-right text-xl font-bold uppercase tracking-wide text-white/90 md:text-3xl lg:text-4xl">
-                      {t.service_point?.name ?? "—"}
+                    <ArrowRight
+                      className="h-[clamp(1.75rem,5vh,3rem)] w-[clamp(1.75rem,5vh,3rem)] shrink-0 text-amber-300/90"
+                      strokeWidth={3}
+                      aria-hidden
+                    />
+                    <span className="min-w-0 flex-1 truncate text-right text-xl font-bold uppercase tracking-wide text-white/90 md:text-3xl lg:text-4xl">
+                      {abbreviateDeskName(t.service_point?.name)}
                     </span>
                   </li>
                 );
