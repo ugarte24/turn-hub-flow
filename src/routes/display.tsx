@@ -175,8 +175,6 @@ let highlightingCallId: string | null = null;
 const highlightListeners = new Set<(id: string | null) => void>();
 /** Evita que speak() se dispare dos veces (bug frecuente de Chrome). */
 let speakInFlight = false;
-let lastSpokenText = "";
-let lastSpokenAt = 0;
 
 function setHighlightingCallId(id: string | null) {
   highlightingCallId = id;
@@ -211,21 +209,12 @@ function speakOnce(text: string): Promise<void> {
         return;
       }
 
-      const now = Date.now();
-      const normalized = text.trim().toLowerCase();
-      // Misma frase otra vez en < 1.5s → ignorar (doble disparo / bug Chrome)
-      if (normalized === lastSpokenText && now - lastSpokenAt < 1500) {
-        resolve();
-        return;
-      }
       if (speakInFlight) {
         resolve();
         return;
       }
 
       speakInFlight = true;
-      lastSpokenText = normalized;
-      lastSpokenAt = now;
 
       const synth = window.speechSynthesis;
       // Vaciar cola residual del motor (sin cancelar a mitad de esta frase)
@@ -300,8 +289,7 @@ function enqueueCallAnnounce(key: string, ticketId: string, code: string, desk: 
       try {
         await playAnnounceSequence(ticketId, code, desk);
       } finally {
-        // Ventana anti-rebote tras el anuncio (realtime duplicado)
-        await sleep(2000);
+        // Liberar al terminar el parpadeo/anuncio para permitir otro llamado de inmediato
         ticketAnnounceLock.delete(ticketId);
       }
     })
