@@ -213,8 +213,8 @@ function speakOnce(text: string): Promise<void> {
 
       const now = Date.now();
       const normalized = text.trim().toLowerCase();
-      // Misma frase otra vez en < 6s → ignorar (doble disparo / bug Chrome)
-      if (normalized === lastSpokenText && now - lastSpokenAt < 6000) {
+      // Misma frase otra vez en < 1.5s → ignorar (doble disparo / bug Chrome)
+      if (normalized === lastSpokenText && now - lastSpokenAt < 1500) {
         resolve();
         return;
       }
