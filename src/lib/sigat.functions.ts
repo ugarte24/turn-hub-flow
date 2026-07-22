@@ -203,30 +203,85 @@ export const cancelTicketByCi = createServerFn({ method: "POST" })
   });
 
 // ---------- OPERATOR ----------
+function resolveSpKind(sp: { kind?: string | null; name: string }): "standard" | "ruat" | "counter" {
+  if (sp.kind === "ruat" || sp.kind === "counter" || sp.kind === "standard") return sp.kind;
+  const n = sp.name.toLowerCase();
+  if (n.includes("ventanilla")) return "counter";
+  if (n.includes("ruat")) return "ruat";
+  return "standard";
+}
+
 export const callNextTicket = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { servicePointId: string }) => z.object({ servicePointId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    // procedures for this SP
+
+    const { data: spRow, error: spErr } = await supabase
+      .from("service_points")
+      .select("*")
+      .eq("id", data.servicePointId)
+      .single();
+    if (spErr || !spRow) throw new Error("Puesto no encontrado");
+    const kind = resolveSpKind(spRow as { kind?: string | null; name: string });
+
     const { data: sp } = await supabase
       .from("service_point_procedures")
       .select("procedure_id")
       .eq("service_point_id", data.servicePointId);
     const procIds = (sp ?? []).map((r) => r.procedure_id);
-    if (procIds.length === 0) throw new Error("Este puesto no tiene trámites asignados");
 
     const today = todayLaPaz();
+    type TicketPick = { id: string };
+    let next: TicketPick | null = null;
 
-    const { data: next } = await supabase
-      .from("tickets")
-      .select("*")
-      .eq("status", "waiting")
-      .eq("day", today)
-      .in("procedure_id", procIds)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
+    // RUAT: primero turnos que vuelven a este mismo puesto
+    if (kind === "ruat") {
+      const { data: returning } = await supabase
+        .from("tickets")
+        .select("id")
+        .eq("status", "waiting")
+        .eq("day", today)
+        .eq("transfer_to", "origin")
+        .eq("origin_service_point_id", data.servicePointId)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      next = returning;
+    }
+
+    // Ventanilla: cualquier turno derivado (la que esté libre)
+    if (!next && kind === "counter") {
+      const { data: forCounter } = await supabase
+        .from("tickets")
+        .select("id")
+        .eq("status", "waiting")
+        .eq("day", today)
+        .eq("transfer_to", "counter")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      next = forCounter;
+    }
+
+    // Cola normal del puesto (sin derivaciones)
+    if (!next) {
+      if (procIds.length === 0) {
+        if (kind === "counter" || kind === "ruat") return null;
+        throw new Error("Este puesto no tiene trámites asignados");
+      }
+      const { data: normal } = await supabase
+        .from("tickets")
+        .select("id")
+        .eq("status", "waiting")
+        .eq("day", today)
+        .in("procedure_id", procIds)
+        .is("transfer_to", null)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      next = normal;
+    }
 
     if (!next) return null;
 
@@ -237,9 +292,91 @@ export const callNextTicket = createServerFn({ method: "POST" })
         service_point_id: data.servicePointId,
         operator_id: userId,
         called_at: new Date().toISOString(),
-      })
+        transfer_to: null,
+      } as never)
       .eq("id", next.id)
       .eq("status", "waiting")
+      .select("*, area:areas(*), procedure:procedures(*), service_point:service_points(*)")
+      .single();
+    if (error) throw new Error(error.message);
+    return updated;
+  });
+
+/** RUAT deriva el turno en atención a cualquier ventanilla libre. */
+export const transferTicketToCounter = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { ticketId: string }) => z.object({ ticketId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: ticket, error: tErr } = await supabase.from("tickets").select("*").eq("id", data.ticketId).single();
+    if (tErr || !ticket) throw new Error("Ticket no encontrado");
+    if (ticket.status !== "calling" && ticket.status !== "in_service") {
+      throw new Error("Solo se puede derivar un turno en atención");
+    }
+    if (ticket.operator_id && ticket.operator_id !== userId) {
+      throw new Error("Este turno no está asignado a tu usuario");
+    }
+
+    const t = ticket as {
+      origin_service_point_id?: string | null;
+      origin_operator_id?: string | null;
+      service_point_id: string | null;
+      operator_id: string | null;
+    };
+    const originSp = t.origin_service_point_id ?? t.service_point_id;
+    const originOp = t.origin_operator_id ?? t.operator_id ?? userId;
+    if (!originSp) throw new Error("No se pudo determinar el puesto RUAT de origen");
+
+    const { data: updated, error } = await supabase
+      .from("tickets")
+      .update({
+        status: "waiting",
+        transfer_to: "counter",
+        origin_service_point_id: originSp,
+        origin_operator_id: originOp,
+        service_point_id: null,
+        operator_id: null,
+        called_at: null,
+        started_at: null,
+        finished_at: null,
+      } as never)
+      .eq("id", data.ticketId)
+      .select("*, area:areas(*), procedure:procedures(*), service_point:service_points(*)")
+      .single();
+    if (error) throw new Error(error.message);
+    return updated;
+  });
+
+/** Ventanilla devuelve el turno al mismo operador/puesto RUAT de origen. */
+export const returnTicketToOrigin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { ticketId: string }) => z.object({ ticketId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: ticket, error: tErr } = await supabase.from("tickets").select("*").eq("id", data.ticketId).single();
+    if (tErr || !ticket) throw new Error("Ticket no encontrado");
+    if (ticket.status !== "calling" && ticket.status !== "in_service") {
+      throw new Error("Solo se puede devolver un turno en atención");
+    }
+    if (ticket.operator_id && ticket.operator_id !== userId) {
+      throw new Error("Este turno no está asignado a tu usuario");
+    }
+
+    const originSp = (ticket as { origin_service_point_id?: string | null }).origin_service_point_id;
+    if (!originSp) throw new Error("Este turno no tiene un operador RUAT de origen para devolver");
+
+    const { data: updated, error } = await supabase
+      .from("tickets")
+      .update({
+        status: "waiting",
+        transfer_to: "origin",
+        service_point_id: null,
+        operator_id: null,
+        called_at: null,
+        started_at: null,
+        finished_at: null,
+      } as never)
+      .eq("id", data.ticketId)
       .select("*, area:areas(*), procedure:procedures(*), service_point:service_points(*)")
       .single();
     if (error) throw new Error(error.message);
@@ -256,18 +393,16 @@ export const updateTicketStatus = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const patch: {
-      status: typeof data.status;
-      started_at?: string;
-      finished_at?: string;
-      called_at?: string;
-    } = { status: data.status };
-    // Repetir llamado / re-llamar: refresca called_at para que la TV anuncie de nuevo
+    const patch: Record<string, unknown> = { status: data.status };
     if (data.status === "calling") patch.called_at = new Date().toISOString();
     if (data.status === "in_service") patch.started_at = new Date().toISOString();
-    if (data.status === "finished" || data.status === "absent" || data.status === "cancelled")
+    if (data.status === "finished" || data.status === "absent" || data.status === "cancelled") {
       patch.finished_at = new Date().toISOString();
-    const { data: t, error } = await supabase.from("tickets").update(patch).eq("id", data.ticketId).select().single();
+      patch.transfer_to = null;
+      patch.origin_service_point_id = null;
+      patch.origin_operator_id = null;
+    }
+    const { data: t, error } = await supabase.from("tickets").update(patch as never).eq("id", data.ticketId).select().single();
     if (error) throw new Error(error.message);
     return t;
   });
@@ -395,11 +530,19 @@ export const deleteUser = createServerFn({ method: "POST" })
 // ---------- ADMIN: service points ----------
 export const upsertServicePoint = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { id?: string; name: string; active: boolean; operatorId?: string | null; procedureIds: string[] }) =>
+  .inputValidator((d: {
+    id?: string;
+    name: string;
+    active: boolean;
+    kind?: "standard" | "ruat" | "counter";
+    operatorId?: string | null;
+    procedureIds: string[];
+  }) =>
     z.object({
       id: z.string().uuid().optional(),
       name: z.string().trim().min(2).max(100),
       active: z.boolean(),
+      kind: z.enum(["standard", "ruat", "counter"]).optional(),
       operatorId: z.string().uuid().nullable().optional(),
       procedureIds: z.array(z.string().uuid()),
     }).parse(d),
@@ -408,15 +551,26 @@ export const upsertServicePoint = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
     if (!isAdmin) throw new Error("Solo administradores");
+    const kind = data.kind ?? (
+      data.name.toLowerCase().includes("ventanilla") ? "counter"
+        : data.name.toLowerCase().includes("ruat") ? "ruat"
+          : "standard"
+    );
     let spId = data.id;
     if (spId) {
       await supabase.from("service_points").update({
-        name: data.name, active: data.active, operator_id: data.operatorId ?? null,
-      }).eq("id", spId);
+        name: data.name,
+        active: data.active,
+        operator_id: data.operatorId ?? null,
+        kind,
+      } as never).eq("id", spId);
     } else {
       const { data: created, error } = await supabase.from("service_points").insert({
-        name: data.name, active: data.active, operator_id: data.operatorId ?? null,
-      }).select("id").single();
+        name: data.name,
+        active: data.active,
+        operator_id: data.operatorId ?? null,
+        kind,
+      } as never).select("id").single();
       if (error) throw new Error(error.message);
       spId = created.id;
     }

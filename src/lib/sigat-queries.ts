@@ -3,13 +3,22 @@ import { todayLaPaz } from "@/lib/date";
 
 export type Area = { id: string; code: string; name: string; active: boolean; sort_order: number };
 export type Procedure = { id: string; area_id: string; name: string; active: boolean; sort_order: number };
+export type ServicePoint = {
+  id: string;
+  name: string;
+  active: boolean;
+  operator_id: string | null;
+  kind?: "standard" | "ruat" | "counter";
+};
 export type Ticket = {
   id: string; day: string; number: number; code: string; ci: string;
   area_id: string; procedure_id: string; status: string;
   service_point_id: string | null; operator_id: string | null;
+  origin_service_point_id?: string | null;
+  origin_operator_id?: string | null;
+  transfer_to?: "counter" | "origin" | null;
   created_at: string; called_at: string | null; started_at: string | null; finished_at: string | null;
 };
-export type ServicePoint = { id: string; name: string; active: boolean; operator_id: string | null };
 
 export async function fetchAreas() {
   const { data } = await supabase.from("areas").select("*").eq("active", true).order("sort_order");

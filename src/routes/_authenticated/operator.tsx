@@ -4,10 +4,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchServicePoints, fetchTodayTickets } from "@/lib/sigat-queries";
-import { callNextTicket, updateTicketStatus } from "@/lib/sigat.functions";
+import {
+  callNextTicket,
+  returnTicketToOrigin,
+  transferTicketToCounter,
+  updateTicketStatus,
+} from "@/lib/sigat.functions";
 import { formatTicketCode } from "@/lib/ticket-code";
 import { toast } from "sonner";
-import { PhoneCall, RefreshCcw, UserX, CheckCircle2, XCircle, PlayCircle, Building2 } from "lucide-react";
+import {
+  PhoneCall, RefreshCcw, UserX, CheckCircle2, XCircle, PlayCircle, Building2, ArrowRightLeft, Undo2,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/operator")({
   head: () => ({ meta: [{ title: "Puesto de atención — SIGAT" }] }),
@@ -19,8 +26,20 @@ type TicketRow = {
   created_at: string; called_at: string | null;
   area?: { name: string } | null; procedure?: { name: string } | null;
   service_point_id: string | null; operator_id: string | null;
-  service_point?: { name: string } | null;
+  origin_service_point_id?: string | null;
+  origin_operator_id?: string | null;
+  transfer_to?: "counter" | "origin" | null;
+  service_point?: { name: string; kind?: string } | null;
 };
+
+function resolveSpKind(sp: { kind?: string | null; name: string } | null | undefined) {
+  if (!sp) return "standard" as const;
+  if (sp.kind === "ruat" || sp.kind === "counter" || sp.kind === "standard") return sp.kind;
+  const n = sp.name.toLowerCase();
+  if (n.includes("ventanilla")) return "counter" as const;
+  if (n.includes("ruat")) return "ruat" as const;
+  return "standard" as const;
+}
 
 function OperatorPage() {
   const { user } = Route.useRouteContext();
@@ -31,6 +50,8 @@ function OperatorPage() {
 
   const callFn = useServerFn(callNextTicket);
   const upFn = useServerFn(updateTicketStatus);
+  const transferFn = useServerFn(transferTicketToCounter);
+  const returnFn = useServerFn(returnTicketToOrigin);
 
   useEffect(() => {
     localStorage.removeItem("sigat_sp");
@@ -54,6 +75,7 @@ function OperatorPage() {
   }, [sps.data, user.id]);
 
   const spId = assignedSp?.id ?? null;
+  const spKind = resolveSpKind(assignedSp);
 
   const callNext = useMutation({
     mutationFn: async () => callFn({ data: { servicePointId: spId! } }),
@@ -75,6 +97,24 @@ function OperatorPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const doTransfer = useMutation({
+    mutationFn: async (ticketId: string) => transferFn({ data: { ticketId } }),
+    onSuccess: () => {
+      toast.success("Derivado a ventanilla");
+      qc.invalidateQueries({ queryKey: ["today_tickets"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const doReturn = useMutation({
+    mutationFn: async (ticketId: string) => returnFn({ data: { ticketId } }),
+    onSuccess: () => {
+      toast.success("Devuelto al operador RUAT de origen");
+      qc.invalidateQueries({ queryKey: ["today_tickets"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const myCalling = useMemo(
     () => (tickets.data as TicketRow[] | undefined)?.find(
       (t) => t.service_point_id === spId && t.operator_id === user.id && (t.status === "calling" || t.status === "in_service"),
@@ -82,8 +122,24 @@ function OperatorPage() {
     [tickets.data, spId, user.id],
   );
 
-  const queueCount = useMemo(() => (tickets.data as TicketRow[] | undefined)?.filter((t) => t.status === "waiting").length ?? 0, [tickets.data]);
+  const queueCount = useMemo(() => {
+    const list = (tickets.data as TicketRow[] | undefined) ?? [];
+    if (spKind === "counter") {
+      return list.filter((t) => t.status === "waiting" && t.transfer_to === "counter").length;
+    }
+    if (spKind === "ruat" && spId) {
+      return list.filter((t) =>
+        t.status === "waiting" && (
+          (t.transfer_to === "origin" && t.origin_service_point_id === spId)
+          || t.transfer_to == null
+        ),
+      ).length;
+    }
+    return list.filter((t) => t.status === "waiting" && t.transfer_to == null).length;
+  }, [tickets.data, spKind, spId]);
+
   const dayTickets = ((tickets.data as TicketRow[] | undefined) ?? []).slice(0, 20);
+  const canReturnToRuat = spKind === "counter" && !!myCalling?.origin_service_point_id;
 
   if (sps.isLoading) {
     return (
@@ -112,6 +168,11 @@ function OperatorPage() {
       <div>
         <p className="text-[10px] uppercase tracking-widest text-muted-foreground md:text-xs">Puesto de atención</p>
         <h1 className="text-2xl font-extrabold leading-tight md:text-3xl">{assignedSp.name}</h1>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {spKind === "ruat" ? "Operador RUAT — puede derivar a ventanilla"
+            : spKind === "counter" ? "Ventanilla — puede devolver al RUAT de origen"
+              : "Puesto general"}
+        </p>
         {!assignedSp.active && (
           <p className="mt-1 text-sm text-destructive">Este puesto está inactivo.</p>
         )}
@@ -137,10 +198,24 @@ function OperatorPage() {
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2 md:mt-6 md:grid-cols-4">
+          <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2 md:mt-6 md:grid-cols-3">
             <ActionBtn onClick={() => doUpdate.mutate({ id: myCalling.id, status: "calling" })} icon={RefreshCcw} label="Repetir llamado" />
             {myCalling.status === "calling" && (
               <ActionBtn primary onClick={() => doUpdate.mutate({ id: myCalling.id, status: "in_service" })} icon={PlayCircle} label="Iniciar atención" />
+            )}
+            {spKind === "ruat" && (
+              <ActionBtn
+                onClick={() => doTransfer.mutate(myCalling.id)}
+                icon={ArrowRightLeft}
+                label={doTransfer.isPending ? "Derivando..." : "Derivar a ventanilla"}
+              />
+            )}
+            {canReturnToRuat && (
+              <ActionBtn
+                onClick={() => doReturn.mutate(myCalling.id)}
+                icon={Undo2}
+                label={doReturn.isPending ? "Devolviendo..." : "Devolver a RUAT"}
+              />
             )}
             <ActionBtn variant="success" onClick={() => doUpdate.mutate({ id: myCalling.id, status: "finished" })} icon={CheckCircle2} label="Finalizar" />
             <ActionBtn variant="warning" onClick={() => doUpdate.mutate({ id: myCalling.id, status: "absent" })} icon={UserX} label="Ausente" />
@@ -164,7 +239,6 @@ function OperatorPage() {
       <div>
         <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground md:text-sm">Cola del día</h2>
 
-        {/* Móvil: tarjetas */}
         <div className="mt-3 space-y-2 md:hidden">
           {dayTickets.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
@@ -175,7 +249,7 @@ function OperatorPage() {
               <div key={t.id} className="rounded-2xl border border-border bg-card px-3.5 py-3">
                 <div className="flex items-start justify-between gap-3">
                   <span className="font-ticket text-xl font-bold text-primary">{formatTicketCode(t.code)}</span>
-                  <StatusPill s={t.status} />
+                  <StatusPill s={t.status} transferTo={t.transfer_to} />
                 </div>
                 <p className="mt-1 text-sm font-medium leading-snug">{t.procedure?.name ?? "—"}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{t.service_point?.name ?? "Sin puesto"}</p>
@@ -184,7 +258,6 @@ function OperatorPage() {
           )}
         </div>
 
-        {/* Desktop: tabla */}
         <div className="mt-3 hidden overflow-hidden rounded-2xl border border-border bg-card md:block">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
@@ -200,7 +273,7 @@ function OperatorPage() {
                 <tr key={t.id} className="border-t border-border">
                   <td className="px-4 py-2 font-ticket font-bold">{formatTicketCode(t.code)}</td>
                   <td className="px-4 py-2">{t.procedure?.name}</td>
-                  <td className="px-4 py-2"><StatusPill s={t.status} /></td>
+                  <td className="px-4 py-2"><StatusPill s={t.status} transferTo={t.transfer_to} /></td>
                   <td className="px-4 py-2 text-muted-foreground">{t.service_point?.name ?? "—"}</td>
                 </tr>
               ))}
@@ -241,7 +314,13 @@ function ActionBtn({ onClick, icon: Icon, label, primary, variant }: { onClick: 
   );
 }
 
-function StatusPill({ s }: { s: string }) {
+function StatusPill({ s, transferTo }: { s: string; transferTo?: string | null }) {
+  if (s === "waiting" && transferTo === "counter") {
+    return <span className="inline-flex shrink-0 rounded-full bg-warning/20 px-2 py-0.5 text-[10px] font-medium text-warning-foreground md:text-xs">A ventanilla</span>;
+  }
+  if (s === "waiting" && transferTo === "origin") {
+    return <span className="inline-flex shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary md:text-xs">Vuelve a RUAT</span>;
+  }
   const map: Record<string, { label: string; cls: string }> = {
     waiting: { label: "En espera", cls: "bg-muted text-foreground" },
     calling: { label: "Llamando", cls: "bg-warning/20 text-warning-foreground" },

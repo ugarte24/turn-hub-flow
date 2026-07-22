@@ -161,6 +161,7 @@ export type Database = {
           active: boolean
           created_at: string
           id: string
+          kind: string
           name: string
           operator_id: string | null
         }
@@ -168,6 +169,7 @@ export type Database = {
           active?: boolean
           created_at?: string
           id?: string
+          kind?: string
           name: string
           operator_id?: string | null
         }
@@ -175,6 +177,7 @@ export type Database = {
           active?: boolean
           created_at?: string
           id?: string
+          kind?: string
           name?: string
           operator_id?: string | null
         }
@@ -243,10 +246,13 @@ export type Database = {
           id: string
           number: number
           operator_id: string | null
+          origin_operator_id: string | null
+          origin_service_point_id: string | null
           procedure_id: string
           service_point_id: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["ticket_status"]
+          transfer_to: string | null
         }
         Insert: {
           area_id: string
@@ -260,10 +266,13 @@ export type Database = {
           id?: string
           number: number
           operator_id?: string | null
+          origin_operator_id?: string | null
+          origin_service_point_id?: string | null
           procedure_id: string
           service_point_id?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
+          transfer_to?: string | null
         }
         Update: {
           area_id?: string
@@ -277,10 +286,13 @@ export type Database = {
           id?: string
           number?: number
           operator_id?: string | null
+          origin_operator_id?: string | null
+          origin_service_point_id?: string | null
           procedure_id?: string
           service_point_id?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
+          transfer_to?: string | null
         }
         Relationships: [
           {

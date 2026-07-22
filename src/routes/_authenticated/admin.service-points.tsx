@@ -12,9 +12,29 @@ export const Route = createFileRoute("/_authenticated/admin/service-points")({
   component: ServicePointsPage,
 });
 
-type SP = { id: string; name: string; active: boolean; operator_id: string | null };
+type SP = {
+  id: string;
+  name: string;
+  active: boolean;
+  operator_id: string | null;
+  kind?: "standard" | "ruat" | "counter";
+};
 type AreaOpt = { id: string; name: string; sort_order: number };
 type ProcOpt = { id: string; area_id: string; name: string };
+
+const KIND_LABEL: Record<string, string> = {
+  standard: "General",
+  ruat: "Operador RUAT",
+  counter: "Ventanilla",
+};
+
+function inferKind(name: string, kind?: string): "standard" | "ruat" | "counter" {
+  if (kind === "ruat" || kind === "counter" || kind === "standard") return kind;
+  const n = name.toLowerCase();
+  if (n.includes("ventanilla")) return "counter";
+  if (n.includes("ruat")) return "ruat";
+  return "standard";
+}
 
 function ServicePointsPage() {
   const qc = useQueryClient();
@@ -33,8 +53,14 @@ function ServicePointsPage() {
     (areas.data ?? []).find((a) => a.id === areaId)?.name ?? "Área";
 
   const upsert = useMutation({
-    mutationFn: async (v: { id?: string; name: string; active: boolean; operatorId?: string | null; procedureIds: string[] }) =>
-      upsertFn({ data: v }),
+    mutationFn: async (v: {
+      id?: string;
+      name: string;
+      active: boolean;
+      kind: "standard" | "ruat" | "counter";
+      operatorId?: string | null;
+      procedureIds: string[];
+    }) => upsertFn({ data: v }),
     onSuccess: () => { toast.success("Puesto guardado"); qc.invalidateQueries(); setEditing(null); },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -57,7 +83,7 @@ function ServicePointsPage() {
         </div>
         <button
           type="button"
-          onClick={() => setEditing({ id: "", name: "", active: true, operator_id: null } as SP)}
+          onClick={() => setEditing({ id: "", name: "", active: true, operator_id: null, kind: "standard" })}
           className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-elegant sm:w-auto"
         >
           <Plus className="h-4 w-4" /> Nuevo puesto
@@ -74,7 +100,9 @@ function ServicePointsPage() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <h3 className="text-base font-bold md:text-lg">{sp.name}</h3>
-                  <p className="text-xs text-muted-foreground">{sp.active ? "Activo" : "Inactivo"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {sp.active ? "Activo" : "Inactivo"} · {KIND_LABEL[inferKind(sp.name, sp.kind)] ?? "General"}
+                  </p>
                   <p className="mt-1 text-sm">
                     <span className="text-muted-foreground">Operador: </span>
                     <span className="font-medium">
@@ -128,11 +156,18 @@ function SPForm({
   procs: ProcOpt[];
   operators: { id: string; full_name: string }[];
   onCancel: () => void;
-  onSave: (v: { name: string; active: boolean; operatorId: string | null; procedureIds: string[] }) => void;
+  onSave: (v: {
+    name: string;
+    active: boolean;
+    kind: "standard" | "ruat" | "counter";
+    operatorId: string | null;
+    procedureIds: string[];
+  }) => void;
   loading: boolean;
 }) {
   const [name, setName] = useState(initial.name);
   const [active, setActive] = useState(initial.active);
+  const [kind, setKind] = useState<"standard" | "ruat" | "counter">(inferKind(initial.name, initial.kind));
   const [operatorId, setOperatorId] = useState<string | null>(initial.operator_id);
   const [pids, setPids] = useState<string[]>(initialProcIds);
 
@@ -147,6 +182,21 @@ function SPForm({
           <div>
             <label className="text-sm font-medium">Nombre</label>
             <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2.5 outline-none focus:border-ring" />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Tipo de puesto</label>
+            <select
+              value={kind}
+              onChange={(e) => setKind(e.target.value as "standard" | "ruat" | "counter")}
+              className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2.5"
+            >
+              <option value="standard">General</option>
+              <option value="ruat">Operador RUAT</option>
+              <option value="counter">Ventanilla</option>
+            </select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              RUAT puede derivar a ventanilla; ventanilla puede devolver al mismo RUAT.
+            </p>
           </div>
           <div>
             <label className="text-sm font-medium">Operador asignado (opcional)</label>
@@ -194,7 +244,7 @@ function SPForm({
         </div>
         <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border p-4 sm:flex-row sm:justify-end">
           <button type="button" onClick={onCancel} className="rounded-lg border border-border px-4 py-2.5 text-sm">Cancelar</button>
-          <button type="button" onClick={() => onSave({ name, active, operatorId, procedureIds: pids })} disabled={loading || !name.trim()}
+          <button type="button" onClick={() => onSave({ name, active, kind, operatorId, procedureIds: pids })} disabled={loading || !name.trim()}
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-elegant disabled:opacity-50">
             <Save className="h-4 w-4" /> {loading ? "Guardando..." : "Guardar"}
           </button>
