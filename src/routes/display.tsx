@@ -159,18 +159,24 @@ function sleep(ms: number) {
   });
 }
 
-/** Clave estable: id + segundo de called_at (evita jitter de timestamp). */
+/** Clave estable por ticket+called_at (segundo). */
 function callAnnounceKey(id: string, calledAt: string) {
   const ms = new Date(calledAt).getTime();
   const sec = Number.isFinite(ms) ? Math.floor(ms / 1000) : calledAt;
   return `${id}:${sec}`;
 }
 
-/** Una sola cola global: si llaman a la vez, suena (y parpadea) uno y después el otro. */
+/** Cola global: un ding + una voz por llamado, nunca en paralelo ni duplicado. */
 const announcedCallKeys = new Set<string>();
+/** Evita re-encolar el mismo ticket mientras suena o acaba de sonar. */
+const ticketAnnounceLock = new Set<string>();
 let announceChain: Promise<void> = Promise.resolve();
 let highlightingCallId: string | null = null;
 const highlightListeners = new Set<(id: string | null) => void>();
+/** Evita que speak() se dispare dos veces (bug frecuente de Chrome). */
+let speakInFlight = false;
+let lastSpokenText = "";
+let lastSpokenAt = 0;
 
 function setHighlightingCallId(id: string | null) {
   highlightingCallId = id;
@@ -205,34 +211,59 @@ function speakOnce(text: string): Promise<void> {
         return;
       }
 
+      const now = Date.now();
+      const normalized = text.trim().toLowerCase();
+      // Misma frase otra vez en < 6s → ignorar (doble disparo / bug Chrome)
+      if (normalized === lastSpokenText && now - lastSpokenAt < 6000) {
+        resolve();
+        return;
+      }
+      if (speakInFlight) {
+        resolve();
+        return;
+      }
+
+      speakInFlight = true;
+      lastSpokenText = normalized;
+      lastSpokenAt = now;
+
       const synth = window.speechSynthesis;
+      // Vaciar cola residual del motor (sin cancelar a mitad de esta frase)
+      if (synth.pending && !synth.speaking) {
+        try { synth.cancel(); } catch { /* ignore */ }
+      }
+
       const msg = new SpeechSynthesisUtterance(text);
+      // Solo lang: asignar voice distinto al lang duplica el audio en Chrome/Edge Windows
       msg.lang = "es-ES";
-      msg.rate = 0.85;
+      msg.rate = 0.9;
       msg.volume = 1;
       msg.pitch = 1;
 
-      const voices = synth.getVoices();
-      const esVoice =
-        voices.find((v) => v.lang.toLowerCase() === "es-bo") ||
-        voices.find((v) => v.lang.toLowerCase() === "es-es") ||
-        voices.find((v) => v.lang.toLowerCase().startsWith("es")) ||
-        null;
-      if (esVoice) msg.voice = esVoice;
-
       let settled = false;
+      let started = false;
       const done = () => {
         if (settled) return;
         settled = true;
+        speakInFlight = false;
         resolve();
+      };
+      msg.onstart = () => {
+        // Si el motor dispara un segundo start de la misma utterance, cortar
+        if (started) {
+          try { synth.cancel(); } catch { /* ignore */ }
+          done();
+          return;
+        }
+        started = true;
       };
       msg.onend = done;
       msg.onerror = done;
 
       synth.speak(msg);
-      // Seguridad: no dejar la cola colgada si el navegador no dispara onend
-      window.setTimeout(done, 12_000);
+      window.setTimeout(done, 10_000);
     } catch {
+      speakInFlight = false;
       resolve();
     }
   });
@@ -242,13 +273,11 @@ async function playAnnounceSequence(ticketId: string, code: string, desk: string
   setHighlightingCallId(ticketId);
   try {
     await unlockTvAudio();
-    // Espera a que termine cualquier voz anterior (evita solapamiento)
     await waitSpeechIdle();
     playCallDing();
     await sleep(550);
-    await speakOnce(`${code}, pasar a ${desk}`);
+    await speakOnce(`Turno ${code} pasar a ${desk}`);
     await waitSpeechIdle();
-    // Pausa clara entre un llamado y el siguiente
     await sleep(700);
   } finally {
     setHighlightingCallId(null);
@@ -257,12 +286,29 @@ async function playAnnounceSequence(ticketId: string, code: string, desk: string
 
 function enqueueCallAnnounce(key: string, ticketId: string, code: string, desk: string) {
   if (announcedCallKeys.has(key)) return;
+  if (ticketAnnounceLock.has(ticketId)) {
+    // Ya en cola / sonando: marcar clave para no reintentar
+    announcedCallKeys.add(key);
+    return;
+  }
+
   announcedCallKeys.add(key);
+  ticketAnnounceLock.add(ticketId);
 
   announceChain = announceChain
-    .then(() => playAnnounceSequence(ticketId, code, desk))
+    .then(async () => {
+      try {
+        await playAnnounceSequence(ticketId, code, desk);
+      } finally {
+        // Ventana anti-rebote tras el anuncio (realtime duplicado)
+        await sleep(2000);
+        ticketAnnounceLock.delete(ticketId);
+      }
+    })
     .catch(() => {
+      ticketAnnounceLock.delete(ticketId);
       setHighlightingCallId(null);
+      speakInFlight = false;
     });
 }
 
