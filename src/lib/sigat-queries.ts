@@ -50,7 +50,7 @@ export async function fetchTodayTickets() {
   const today = todayLaPaz();
   const { data } = await supabase
     .from("tickets")
-    .select("*, area:areas(*), procedure:procedures(*), service_point:service_points(*)")
+    .select("*, area:areas(*), procedure:procedures(*), service_point:service_points!service_point_id(*)")
     .eq("day", today)
     .order("created_at", { ascending: false });
   return data ?? [];
@@ -72,7 +72,7 @@ export async function fetchTodayRatings() {
   if (!ids.length) return [] as TicketRatingRow[];
   const { data } = await supabase
     .from("ticket_ratings")
-    .select("*, ticket:tickets(code, service_point:service_points(name))")
+    .select("*, ticket:tickets(code, service_point:service_points!service_point_id(name))")
     .in("ticket_id", ids)
     .order("created_at", { ascending: false });
   return (data ?? []) as TicketRatingRow[];

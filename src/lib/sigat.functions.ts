@@ -296,7 +296,7 @@ export const callNextTicket = createServerFn({ method: "POST" })
       } as never)
       .eq("id", next.id)
       .eq("status", "waiting")
-      .select("*, area:areas(*), procedure:procedures(*), service_point:service_points(*)")
+      .select("*, area:areas(*), procedure:procedures(*), service_point:service_points!service_point_id(*)")
       .single();
     if (error) throw new Error(error.message);
     return updated;
@@ -341,7 +341,7 @@ export const transferTicketToCounter = createServerFn({ method: "POST" })
         finished_at: null,
       } as never)
       .eq("id", data.ticketId)
-      .select("*, area:areas(*), procedure:procedures(*), service_point:service_points(*)")
+      .select("*, area:areas(*), procedure:procedures(*), service_point:service_points!service_point_id(*)")
       .single();
     if (error) throw new Error(error.message);
     return updated;
@@ -377,7 +377,7 @@ export const returnTicketToOrigin = createServerFn({ method: "POST" })
         finished_at: null,
       } as never)
       .eq("id", data.ticketId)
-      .select("*, area:areas(*), procedure:procedures(*), service_point:service_points(*)")
+      .select("*, area:areas(*), procedure:procedures(*), service_point:service_points!service_point_id(*)")
       .single();
     if (error) throw new Error(error.message);
     return updated;
