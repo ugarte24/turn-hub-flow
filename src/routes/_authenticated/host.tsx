@@ -73,23 +73,62 @@ function printHostTicket(t: GeneratedTicket) {
     <hr class="rule" />
     <div class="foot">Espere su llamado en la pantalla</div>
   </div>
-  <script>
-    window.onload = function () {
-      window.focus();
-      window.print();
-    };
-  </script>
 </body>
 </html>`;
 
-  const win = window.open("", "_blank", "noopener,noreferrer,width=420,height=640");
-  if (!win) {
-    toast.error("Permite ventanas emergentes para imprimir el ticket");
-    return;
-  }
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
+  // Iframe oculto: no depende de ventanas emergentes (más fiable en Chrome/Edge).
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.setAttribute("title", "Imprimir ticket");
+  Object.assign(iframe.style, {
+    position: "fixed",
+    right: "0",
+    bottom: "0",
+    width: "0",
+    height: "0",
+    border: "0",
+    opacity: "0",
+    pointerEvents: "none",
+  });
+
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    URL.revokeObjectURL(url);
+    iframe.remove();
+  };
+
+  iframe.addEventListener("load", () => {
+    const win = iframe.contentWindow;
+    if (!win) {
+      toast.error("No se pudo preparar la impresión");
+      cleanup();
+      return;
+    }
+    const onAfterPrint = () => {
+      win.removeEventListener("afterprint", onAfterPrint);
+      cleanup();
+    };
+    win.addEventListener("afterprint", onAfterPrint);
+    // Fallback por si afterprint no dispara en algún navegador
+    window.setTimeout(cleanup, 120_000);
+
+    window.setTimeout(() => {
+      try {
+        win.focus();
+        win.print();
+      } catch {
+        toast.error("No se pudo abrir el diálogo de impresión");
+        cleanup();
+      }
+    }, 50);
+  });
+
+  document.body.appendChild(iframe);
+  iframe.src = url;
 }
 
 function escapeHtml(value: string) {
