@@ -118,7 +118,8 @@ export const generateTicketAsStaff = createServerFn({ method: "POST" })
       _ci: "",
       _area_id: data.areaId,
       _procedure_id: data.procedureId,
-    });
+      _created_by: userId,
+    } as never);
     if (error) throw new Error(error.message);
     const ticket = (Array.isArray(row) ? row[0] : row) as { id?: string } | null;
     if (!ticket?.id) return row;

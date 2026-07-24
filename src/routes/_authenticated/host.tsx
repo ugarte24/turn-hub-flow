@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { CheckCircle2, Printer, TicketPlus, X } from "lucide-react";
@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchAreas, fetchProcedures, type Area, type Procedure } from "@/lib/sigat-queries";
 import { generateTicketAsStaff } from "@/lib/sigat.functions";
 import { formatTicketCode } from "@/lib/ticket-code";
+import { todayLaPaz } from "@/lib/date";
 
 export const Route = createFileRoute("/_authenticated/host")({
   head: () => ({ meta: [{ title: "Sacar turnos — SIGAT" }] }),
@@ -165,15 +166,15 @@ function HostPage() {
       </div>
     );
   }
-  return <HostForm />;
+  return <HostForm userId={user.id} />;
 }
 
-function HostForm() {
+function HostForm({ userId }: { userId: string }) {
+  const qc = useQueryClient();
   const genFn = useServerFn(generateTicketAsStaff);
   const [areaId, setAreaId] = useState<string | null>(null);
   const [procedureId, setProcedureId] = useState<string | null>(null);
   const [lastTicket, setLastTicket] = useState<GeneratedTicket | null>(null);
-  const [recent, setRecent] = useState<GeneratedTicket[]>([]);
 
   const areas = useQuery({ queryKey: ["areas"], queryFn: fetchAreas });
   const procs = useQuery({
@@ -181,6 +182,24 @@ function HostForm() {
     queryFn: () => fetchProcedures(areaId!),
     enabled: !!areaId,
   });
+
+  // Solo turnos del día generados por este usuario de mostrador
+  const recentQ = useQuery({
+    queryKey: ["host_recent_tickets", todayLaPaz(), userId],
+    queryFn: async (): Promise<GeneratedTicket[]> => {
+      const today = todayLaPaz();
+      const { data, error } = await supabase
+        .from("tickets")
+        .select("*, area:areas(*), procedure:procedures(*)")
+        .eq("day", today)
+        .eq("created_by", userId)
+        .order("created_at", { ascending: false })
+        .limit(12);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as GeneratedTicket[];
+    },
+  });
+  const recent = recentQ.data ?? [];
 
   const generate = useMutation({
     mutationFn: async () => genFn({ data: { areaId: areaId!, procedureId: procedureId! } }),
@@ -192,8 +211,8 @@ function HostForm() {
         procedure: row.procedure ?? procs.data?.find((p) => p.id === procedureId) ?? null,
       };
       setLastTicket(full);
-      setRecent((r) => [full, ...r].slice(0, 8));
       setProcedureId(null);
+      void qc.invalidateQueries({ queryKey: ["host_recent_tickets"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -261,9 +280,13 @@ function HostForm() {
         </div>
 
         <div className="flex flex-col gap-4">
-          {recent.length > 0 && (
-            <div className="rounded-2xl border border-border bg-card p-4">
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Últimos generados</p>
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Últimos generados</p>
+            {recentQ.isLoading ? (
+              <p className="mt-3 text-sm text-muted-foreground">Cargando…</p>
+            ) : recent.length === 0 ? (
+              <p className="mt-3 text-sm text-muted-foreground">Aún no hay turnos generados por ti hoy.</p>
+            ) : (
               <ul className="mt-2 divide-y divide-border text-sm">
                 {recent.map((t) => (
                   <li key={t.id} className="flex min-h-10 items-center justify-between gap-2 py-2.5">
@@ -284,8 +307,8 @@ function HostForm() {
                   </li>
                 ))}
               </ul>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 

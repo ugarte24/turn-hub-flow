@@ -240,6 +240,7 @@ export type Database = {
           ci: string
           code: string
           created_at: string
+          created_by: string | null
           day: string
           device_id: string | null
           finished_at: string | null
@@ -260,6 +261,7 @@ export type Database = {
           ci: string
           code: string
           created_at?: string
+          created_by?: string | null
           day?: string
           device_id?: string | null
           finished_at?: string | null
@@ -280,6 +282,7 @@ export type Database = {
           ci?: string
           code?: string
           created_at?: string
+          created_by?: string | null
           day?: string
           device_id?: string | null
           finished_at?: string | null
@@ -375,6 +378,7 @@ export type Database = {
         Args: {
           _area_id: string
           _ci?: string | null
+          _created_by?: string | null
           _device_id?: string | null
           _procedure_id: string
         }
