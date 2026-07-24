@@ -2,9 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import QRCode from "qrcode";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, CheckCircle2, Clock, RefreshCcw, Star, XCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Clock, Star, XCircle } from "lucide-react";
 import { fetchAreas, fetchProcedures, type Area, type Procedure } from "@/lib/sigat-queries";
 import {
   cancelTicketByDevice,
@@ -173,12 +172,8 @@ function TicketPage() {
           {step === "ticket" && ticket && (
             <TicketView
               t={ticket}
-              onDone={() => {
-                setAreaId(null);
-                setProcedureId(null);
-                setTicket(null);
-                bootstrap.mutate();
-              }}
+              loading={cancel.isPending}
+              onCancel={() => cancel.mutate()}
             />
           )}
           {step === "existing" && ticket && (
@@ -400,12 +395,13 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TicketView({ t, onDone }: { t: ActiveTicket; onDone: () => void }) {
-  const [qr, setQr] = useState<string>("");
-  useEffect(() => {
-    QRCode.toDataURL(JSON.stringify({ id: t.id, code: t.code }), { width: 200, margin: 1 })
-      .then(setQr);
-  }, [t.id, t.code]);
+function TicketView({
+  t, onCancel, loading,
+}: {
+  t: ActiveTicket;
+  onCancel: () => void;
+  loading: boolean;
+}) {
   const created = new Date(t.created_at);
   return (
     <div className="text-center">
@@ -421,14 +417,28 @@ function TicketView({ t, onDone }: { t: ActiveTicket; onDone: () => void }) {
           <div><p className="text-muted-foreground">Fecha</p><p className="font-semibold">{created.toLocaleDateString("es-BO")}</p></div>
           <div><p className="text-muted-foreground">Hora</p><p className="font-semibold">{created.toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit" })}</p></div>
         </div>
-        {qr && <img src={qr} alt="QR" className="mx-auto mt-5 h-40 w-40 rounded-lg border border-border bg-white p-2" />}
       </div>
       <p className="mt-5 text-sm text-muted-foreground">
         Espera tu llamado en la pantalla. Se te asignará automáticamente un puesto de atención.
       </p>
-      <button onClick={onDone} className="mt-4 inline-flex items-center gap-2 rounded-full border border-border px-5 py-2 text-sm font-medium hover:bg-accent">
-        <RefreshCcw className="h-4 w-4" /> Sacar otro turno
-      </button>
+      <div className="mt-5 flex flex-col gap-2">
+        <Link
+          to="/"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-primary py-3 font-semibold text-primary-foreground shadow-elegant hover:brightness-105"
+        >
+          <ArrowLeft className="h-4 w-4" /> Volver al inicio
+        </Link>
+        {t.status === "waiting" && (
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={loading}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-destructive/40 py-3 font-semibold text-destructive hover:bg-destructive/10 disabled:opacity-50"
+          >
+            <XCircle className="h-4 w-4" /> {loading ? "Cancelando..." : "Cancelar ticket"}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
