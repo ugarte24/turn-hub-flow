@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_authenticated/host")({
 });
 
 type GeneratedTicket = {
-  id: string; code: string; ci: string;
+  id: string; code: string; ci?: string;
   area?: Area | null; procedure?: Procedure | null;
 };
 
@@ -50,7 +50,6 @@ function HostPage() {
 
 function HostForm() {
   const genFn = useServerFn(generateTicketAsStaff);
-  const [ci, setCi] = useState("");
   const [areaId, setAreaId] = useState<string | null>(null);
   const [procedureId, setProcedureId] = useState<string | null>(null);
   const [lastTicket, setLastTicket] = useState<GeneratedTicket | null>(null);
@@ -64,7 +63,7 @@ function HostForm() {
   });
 
   const generate = useMutation({
-    mutationFn: async () => genFn({ data: { ci: ci.trim(), areaId: areaId!, procedureId: procedureId! } }),
+    mutationFn: async () => genFn({ data: { areaId: areaId!, procedureId: procedureId! } }),
     onSuccess: (data) => {
       const row = data as GeneratedTicket;
       const full: GeneratedTicket = {
@@ -74,34 +73,23 @@ function HostForm() {
       };
       setLastTicket(full);
       setRecent((r) => [full, ...r].slice(0, 8));
-      setCi("");
       setProcedureId(null);
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const canGenerate = ci.trim().length >= 4 && !!areaId && !!procedureId && !generate.isPending;
+  const canGenerate = !!areaId && !!procedureId && !generate.isPending;
 
   return (
     <div className="p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:p-10">
       <h1 className="text-2xl font-extrabold md:text-3xl">Sacar turnos</h1>
       <p className="text-sm text-muted-foreground">
-        Genera turnos para contribuyentes sin celular o que llegan en grupo. Un turno por CI.
+        Genera turnos para contribuyentes sin celular o que llegan en grupo.
       </p>
 
       <div className="mt-5 grid gap-4 md:mt-6 md:gap-6 lg:grid-cols-[1fr_20rem]">
         <div className="rounded-2xl border border-border bg-card p-4 md:p-6">
-          <label className="text-sm font-semibold">CI del contribuyente</label>
-          <input
-            inputMode="numeric"
-            value={ci}
-            onChange={(e) => setCi(e.target.value.replace(/[^0-9A-Za-z-]/g, ""))}
-            onKeyDown={(e) => e.key === "Enter" && canGenerate && generate.mutate()}
-            placeholder="12345678"
-            className="mt-2 w-full rounded-xl border border-input bg-background px-4 py-3.5 text-center text-xl font-mono tracking-widest outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-          />
-
-          <p className="mt-5 text-sm font-semibold">Área</p>
+          <p className="text-sm font-semibold">Área</p>
           <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-3">
             {(areas.data ?? []).map((a) => (
               <button
@@ -161,8 +149,7 @@ function HostForm() {
                   <li key={t.id} className="flex min-h-10 items-center justify-between gap-2 py-2.5">
                     <span className="font-ticket font-bold text-primary">{formatTicketCode(t.code)}</span>
                     <span className="truncate text-xs text-muted-foreground">
-                      <span className="font-mono">{t.ci}</span>
-                      {t.procedure?.name ? ` · ${t.procedure.name}` : ""}
+                      {t.procedure?.name ?? "—"}
                     </span>
                   </li>
                 ))}
@@ -210,10 +197,6 @@ function HostForm() {
               </p>
 
               <dl className="mt-6 w-full space-y-2.5 rounded-2xl border border-border bg-accent/40 p-4 text-left text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-muted-foreground">CI</dt>
-                  <dd className="font-mono font-semibold">{lastTicket.ci}</dd>
-                </div>
                 {lastTicket.area?.name && (
                   <div className="flex items-center justify-between gap-3">
                     <dt className="text-muted-foreground">Área</dt>

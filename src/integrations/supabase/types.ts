@@ -342,7 +342,7 @@ export type Database = {
     }
     Functions: {
       cancel_ticket: {
-        Args: { _ci: string; _ticket_id: string }
+        Args: { _ticket_id: string; _device_id?: string | null }
         Returns: {
           area_id: string
           called_at: string | null
@@ -367,8 +367,17 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      expire_stale_tickets: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       generate_ticket: {
-        Args: { _area_id: string; _ci: string; _device_id?: string | null; _procedure_id: string }
+        Args: {
+          _area_id: string
+          _ci?: string | null
+          _device_id?: string | null
+          _procedure_id: string
+        }
         Returns: {
           area_id: string
           called_at: string | null
@@ -402,8 +411,8 @@ export type Database = {
       }
       submit_ticket_rating: {
         Args: {
-          _ci: string
           _comment?: string | null
+          _device_id?: string | null
           _score: number
           _ticket_id: string
         }

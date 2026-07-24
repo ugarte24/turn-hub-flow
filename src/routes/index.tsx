@@ -18,7 +18,7 @@ function CitizenLanding() {
         </div>
         <div className="relative mx-auto flex min-h-[100dvh] max-w-6xl flex-col items-center justify-center px-5 py-10 text-center md:min-h-[72vh] md:items-start md:px-6 md:py-20 md:text-left">
           <p className="max-w-md text-base leading-snug text-white/85 md:max-w-xl md:text-xl">
-            Sacá tu turno con tu CI y esperá el llamado en pantalla. Sin filas, sin confusión.
+            Sacá tu turno y esperá el llamado en pantalla. Sin filas, sin confusión.
           </p>
           <div className="mt-7 w-full max-w-md md:mt-10 md:max-w-none">
             <Link
@@ -38,8 +38,8 @@ function CitizenLanding() {
             <Clock className="h-7 w-7 text-primary md:h-8 md:w-8" />
             <h2 className="mt-3 text-lg font-bold md:mt-4 md:text-xl">¿Cómo funciona?</h2>
             <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-sm text-muted-foreground md:mt-3 md:space-y-2">
-              <li>Ingresá tu número de CI.</li>
               <li>Elegí el área y el trámite.</li>
+              <li>Confirmá y obtené tu número.</li>
               <li>Esperá tu llamado en la pantalla TV.</li>
             </ol>
           </div>

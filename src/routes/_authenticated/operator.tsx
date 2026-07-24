@@ -194,7 +194,9 @@ function OperatorPage() {
             <div className="mt-3 flex flex-wrap justify-center gap-1.5 text-xs md:mt-3 md:gap-2 md:text-sm">
               <span className="rounded-full bg-accent px-2.5 py-1 font-medium md:px-3">{myCalling.area?.name}</span>
               <span className="rounded-full bg-accent px-2.5 py-1 font-medium md:px-3">{myCalling.procedure?.name}</span>
-              <span className="rounded-full border border-border px-2.5 py-1 md:px-3">CI: {myCalling.ci}</span>
+              {myCalling.ci ? (
+                <span className="rounded-full border border-border px-2.5 py-1 md:px-3">CI: {myCalling.ci}</span>
+              ) : null}
             </div>
           </div>
 

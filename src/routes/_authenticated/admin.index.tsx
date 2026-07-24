@@ -157,7 +157,7 @@ function AdminDashboard() {
           <ul className="mt-4 divide-y divide-border">
             {ratingList.length === 0 && (
               <li className="py-6 text-center text-sm text-muted-foreground">
-                Cuando un contribuyente finalice su turno e ingrese su CI, podrá calificar la atención.
+                Cuando un contribuyente finalice su turno, podrá calificar la atención desde el mismo dispositivo.
               </li>
             )}
             {ratingList.slice(0, 12).map((r) => (

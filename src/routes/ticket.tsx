@@ -4,13 +4,12 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import QRCode from "qrcode";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Clock, RefreshCcw, Star, XCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Clock, RefreshCcw, Star, XCircle } from "lucide-react";
 import { fetchAreas, fetchProcedures, type Area, type Procedure } from "@/lib/sigat-queries";
 import {
-  cancelTicketByCi,
-  findActiveTicketByCi,
+  cancelTicketByDevice,
   findActiveTicketByDevice,
-  findRateableTicketByCi,
+  findRateableTicketByDevice,
   generateTicket,
   submitTicketRating,
 } from "@/lib/sigat.functions";
@@ -21,16 +20,15 @@ export const Route = createFileRoute("/ticket")({
   component: TicketPage,
 });
 
-type Step = "ci" | "select" | "confirm" | "ticket" | "existing" | "rate" | "replace";
+type Step = "boot" | "select" | "confirm" | "ticket" | "existing" | "rate";
 type ActiveTicket = {
-  id: string; code: string; ci: string; status: string;
+  id: string; code: string; ci?: string; status: string;
   area?: Area | null; procedure?: Procedure | null;
   created_at: string;
 };
 
 function TicketPage() {
-  const [step, setStep] = useState<Step>("ci");
-  const [ci, setCi] = useState("");
+  const [step, setStep] = useState<Step>("boot");
   const [areaId, setAreaId] = useState<string | null>(null);
   const [procedureId, setProcedureId] = useState<string | null>(null);
   const [ticket, setTicket] = useState<ActiveTicket | null>(null);
@@ -42,20 +40,17 @@ function TicketPage() {
     enabled: !!areaId,
   });
 
-  const findFn = useServerFn(findActiveTicketByCi);
   const findDeviceFn = useServerFn(findActiveTicketByDevice);
-  const findRateFn = useServerFn(findRateableTicketByCi);
+  const findRateFn = useServerFn(findRateableTicketByDevice);
   const genFn = useServerFn(generateTicket);
-  const cancelFn = useServerFn(cancelTicketByCi);
+  const cancelFn = useServerFn(cancelTicketByDevice);
   const rateFn = useServerFn(submitTicketRating);
 
-  const checkCi = useMutation({
-    mutationFn: async (c: string) => {
-      const active = await findFn({ data: { ci: c } });
+  const bootstrap = useMutation({
+    mutationFn: async () => {
+      const active = await findDeviceFn();
       if (active) return { kind: "active" as const, ticket: active };
-      const deviceTicket = await findDeviceFn();
-      if (deviceTicket && deviceTicket.ci !== c) return { kind: "replace" as const, ticket: deviceTicket };
-      const rateable = await findRateFn({ data: { ci: c } });
+      const rateable = await findRateFn();
       if (rateable) return { kind: "rate" as const, ticket: rateable };
       return { kind: "none" as const, ticket: null };
     },
@@ -63,9 +58,6 @@ function TicketPage() {
       if (data.kind === "active") {
         setTicket(data.ticket as ActiveTicket);
         setStep("existing");
-      } else if (data.kind === "replace") {
-        setTicket(data.ticket as ActiveTicket);
-        setStep("replace");
       } else if (data.kind === "rate") {
         setTicket(data.ticket as ActiveTicket);
         setStep("rate");
@@ -73,11 +65,20 @@ function TicketPage() {
         setStep("select");
       }
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      toast.error(e.message);
+      setStep("select");
+    },
   });
 
+  useEffect(() => {
+    bootstrap.mutate();
+    // Solo al montar
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const generate = useMutation({
-    mutationFn: async () => genFn({ data: { ci, areaId: areaId!, procedureId: procedureId! } }),
+    mutationFn: async () => genFn({ data: { areaId: areaId!, procedureId: procedureId! } }),
     onSuccess: (data) => {
       const row = data as ActiveTicket;
       setTicket({
@@ -92,14 +93,20 @@ function TicketPage() {
   });
 
   const cancel = useMutation({
-    mutationFn: async () => cancelFn({ data: { ci, ticketId: ticket!.id } }),
-    onSuccess: () => { setTicket(null); setStep("ci"); toast.success("Ticket cancelado"); },
+    mutationFn: async () => cancelFn({ data: { ticketId: ticket!.id } }),
+    onSuccess: () => {
+      setTicket(null);
+      setAreaId(null);
+      setProcedureId(null);
+      setStep("select");
+      toast.success("Ticket cancelado");
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const rate = useMutation({
     mutationFn: async (p: { score: number; comment: string }) =>
-      rateFn({ data: { ci, ticketId: ticket!.id, score: p.score, comment: p.comment || undefined } }),
+      rateFn({ data: { ticketId: ticket!.id, score: p.score, comment: p.comment || undefined } }),
     onSuccess: () => {
       toast.success("¡Gracias por tu calificación!");
       setTicket(null);
@@ -128,15 +135,8 @@ function TicketPage() {
         </div>
 
         <div className="rounded-3xl border border-white/10 bg-card p-5 shadow-elegant md:p-8">
-          {step === "ci" && (
-            <StepCi
-              ci={ci} setCi={setCi}
-              onNext={() => {
-                if (ci.trim().length < 4) return toast.error("Ingresa un CI válido");
-                checkCi.mutate(ci.trim());
-              }}
-              loading={checkCi.isPending}
-            />
+          {step === "boot" && (
+            <p className="py-8 text-center text-sm text-muted-foreground">Preparando…</p>
           )}
           {step === "rate" && ticket && (
             <StepRate
@@ -151,13 +151,11 @@ function TicketPage() {
           )}
           {step === "select" && (
             <StepSelect
-              ci={ci}
               areas={areas.data ?? []}
               procs={procs.data ?? []}
               procsLoading={procs.isFetching}
               areaId={areaId} setAreaId={(v) => { setAreaId(v); setProcedureId(null); }}
               procedureId={procedureId} setProcedureId={setProcedureId}
-              onBack={() => setStep("ci")}
               onNext={() => {
                 if (!areaId || !procedureId) return toast.error("Selecciona área y trámite");
                 setStep("confirm");
@@ -166,49 +164,28 @@ function TicketPage() {
           )}
           {step === "confirm" && selectedArea && selectedProc && (
             <StepConfirm
-              ci={ci} area={selectedArea} proc={selectedProc}
+              area={selectedArea} proc={selectedProc}
               onBack={() => setStep("select")}
               onConfirm={() => generate.mutate()}
               loading={generate.isPending}
             />
           )}
-          {step === "ticket" && ticket && <TicketView t={ticket} onDone={() => { setCi(""); setAreaId(null); setProcedureId(null); setTicket(null); setStep("ci"); }} />}
+          {step === "ticket" && ticket && (
+            <TicketView
+              t={ticket}
+              onDone={() => {
+                setAreaId(null);
+                setProcedureId(null);
+                setTicket(null);
+                bootstrap.mutate();
+              }}
+            />
+          )}
           {step === "existing" && ticket && (
             <ExistingTicket t={ticket} onCancel={() => cancel.mutate()} loading={cancel.isPending} onView={() => setStep("ticket")} />
           )}
-          {step === "replace" && ticket && (
-            <StepReplace
-              t={ticket}
-              newCi={ci}
-              onContinue={() => { setTicket(null); setStep("select"); }}
-              onUseExisting={() => { setCi(ticket.ci); setStep("existing"); }}
-            />
-          )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function StepCi({ ci, setCi, onNext, loading }: { ci: string; setCi: (v: string) => void; onNext: () => void; loading: boolean }) {
-  return (
-    <div>
-      <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Paso 1 de 3</p>
-      <h1 className="mt-1 text-2xl font-bold tracking-tight">Ingresá tu CI</h1>
-      <p className="mt-1.5 text-sm text-muted-foreground">Con tu carnet generamos y vinculamos tu turno.</p>
-      <input
-        autoFocus inputMode="numeric" value={ci}
-        onChange={(e) => setCi(e.target.value.replace(/[^0-9A-Za-z-]/g, ""))}
-        onKeyDown={(e) => e.key === "Enter" && onNext()}
-        placeholder="12345678"
-        className="mt-6 w-full rounded-2xl border border-input bg-background px-4 py-4 text-center text-2xl font-mono tracking-widest outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-      />
-      <button
-        onClick={onNext} disabled={loading}
-        className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-primary py-3.5 text-lg font-semibold text-primary-foreground shadow-elegant transition hover:brightness-105 disabled:opacity-50"
-      >
-        {loading ? "Verificando..." : "Continuar"} <ArrowRight className="h-5 w-5" />
-      </button>
     </div>
   );
 }
@@ -284,30 +261,21 @@ function StepRate({
 }
 
 function StepSelect({
-  ci, areas, procs, procsLoading, areaId, setAreaId, procedureId, setProcedureId, onBack, onNext,
+  areas, procs, procsLoading, areaId, setAreaId, procedureId, setProcedureId, onNext,
 }: {
-  ci: string;
   areas: Area[]; procs: Procedure[]; procsLoading: boolean;
   areaId: string | null; setAreaId: (v: string) => void;
   procedureId: string | null; setProcedureId: (v: string) => void;
-  onBack: () => void; onNext: () => void;
+  onNext: () => void;
 }) {
   const canContinue = !!areaId && !!procedureId;
 
   return (
     <div>
-      <button
-        type="button"
-        onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" /> Cambiar CI
-      </button>
-
-      <p className="mt-4 text-xs font-medium uppercase tracking-widest text-muted-foreground">Paso 2 de 3</p>
+      <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Paso 1 de 2</p>
       <h1 className="mt-1 text-2xl font-bold tracking-tight">¿Qué trámite necesitás?</h1>
       <p className="mt-1.5 text-sm text-muted-foreground">
-        CI <span className="font-mono font-semibold text-foreground">{ci}</span>
+        Elegí el área y el trámite para obtener tu número.
       </p>
 
       <section className="mt-6">
@@ -393,15 +361,14 @@ function StepSelect({
   );
 }
 
-function StepConfirm({ ci, area, proc, onBack, onConfirm, loading }: { ci: string; area: Area; proc: Procedure; onBack: () => void; onConfirm: () => void; loading: boolean }) {
+function StepConfirm({ area, proc, onBack, onConfirm, loading }: { area: Area; proc: Procedure; onBack: () => void; onConfirm: () => void; loading: boolean }) {
   const now = new Date();
   return (
     <div>
-      <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Paso 3 de 3</p>
+      <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Paso 2 de 2</p>
       <h1 className="mt-1 text-2xl font-bold tracking-tight">Confirmá tu turno</h1>
       <p className="mt-1.5 text-sm text-muted-foreground">Revisá los datos antes de generar el número.</p>
       <dl className="mt-6 overflow-hidden divide-y divide-border rounded-2xl border border-border bg-muted/20">
-        <Row label="CI" value={ci} />
         <Row label="Área" value={area.name} />
         <Row label="Trámite" value={proc.name} />
         <Row label="Fecha" value={now.toLocaleDateString("es-BO")} />
@@ -436,9 +403,9 @@ function Row({ label, value }: { label: string; value: string }) {
 function TicketView({ t, onDone }: { t: ActiveTicket; onDone: () => void }) {
   const [qr, setQr] = useState<string>("");
   useEffect(() => {
-    QRCode.toDataURL(JSON.stringify({ id: t.id, code: t.code, ci: t.ci }), { width: 200, margin: 1 })
+    QRCode.toDataURL(JSON.stringify({ id: t.id, code: t.code }), { width: 200, margin: 1 })
       .then(setQr);
-  }, [t.id, t.code, t.ci]);
+  }, [t.id, t.code]);
   const created = new Date(t.created_at);
   return (
     <div className="text-center">
@@ -462,47 +429,6 @@ function TicketView({ t, onDone }: { t: ActiveTicket; onDone: () => void }) {
       <button onClick={onDone} className="mt-4 inline-flex items-center gap-2 rounded-full border border-border px-5 py-2 text-sm font-medium hover:bg-accent">
         <RefreshCcw className="h-4 w-4" /> Sacar otro turno
       </button>
-    </div>
-  );
-}
-
-function StepReplace({
-  t, newCi, onContinue, onUseExisting,
-}: {
-  t: ActiveTicket;
-  newCi: string;
-  onContinue: () => void;
-  onUseExisting: () => void;
-}) {
-  return (
-    <div>
-      <div className="inline-flex items-center gap-2 rounded-full bg-warning/15 px-3 py-1 text-sm font-medium text-warning-foreground">
-        <AlertTriangle className="h-4 w-4" /> Este dispositivo ya tiene un turno
-      </div>
-      <div className="mt-5 rounded-2xl border border-border bg-accent/40 p-5">
-        <p className="text-xs text-muted-foreground">Turno activo</p>
-        <p className="font-ticket text-4xl font-extrabold text-primary">{formatTicketCode(t.code)}</p>
-        <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-          <div><p className="text-muted-foreground">CI</p><p className="font-mono font-semibold">{t.ci}</p></div>
-          <div><p className="text-muted-foreground">Trámite</p><p className="font-semibold">{t.procedure?.name ?? "—"}</p></div>
-        </div>
-      </div>
-      <p className="mt-4 text-sm text-muted-foreground">
-        Si continuás con el CI <span className="font-mono font-semibold text-foreground">{newCi}</span>, el turno{" "}
-        <span className="font-ticket font-bold text-primary">{formatTicketCode(t.code)}</span> se cancelará.
-      </p>
-      <div className="mt-5 flex flex-col gap-2">
-        <button
-          type="button"
-          onClick={onContinue}
-          className="rounded-2xl bg-gradient-primary py-3.5 font-semibold text-primary-foreground shadow-elegant hover:brightness-105"
-        >
-          Continuar y cancelar ese turno
-        </button>
-        <button type="button" onClick={onUseExisting} className="rounded-2xl border border-border py-3 font-medium hover:bg-accent">
-          Mantener el turno {formatTicketCode(t.code)}
-        </button>
-      </div>
     </div>
   );
 }

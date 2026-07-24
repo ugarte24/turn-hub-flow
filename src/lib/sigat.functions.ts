@@ -50,9 +50,8 @@ function publicClient() {
 
 // ---------- PUBLIC: ticket generation ----------
 export const generateTicket = createServerFn({ method: "POST" })
-  .inputValidator((d: { ci: string; areaId: string; procedureId: string }) =>
+  .inputValidator((d: { areaId: string; procedureId: string }) =>
     z.object({
-      ci: z.string().trim().min(4).max(20).regex(/^[0-9A-Za-z-]+$/),
       areaId: z.string().uuid(),
       procedureId: z.string().uuid(),
     }).parse(d),
@@ -61,7 +60,7 @@ export const generateTicket = createServerFn({ method: "POST" })
     const sb = publicClient();
     const deviceId = getOrCreateDeviceId();
     const { data: row, error } = await sb.rpc("generate_ticket", {
-      _ci: data.ci,
+      _ci: "",
       _area_id: data.areaId,
       _procedure_id: data.procedureId,
       _device_id: deviceId,
@@ -79,15 +78,17 @@ export const generateTicket = createServerFn({ method: "POST" })
     return full;
   });
 
-/** Active ticket issued from this device (any CI). Used to warn before replacing it. */
+/** Active ticket issued from this device. */
 export const findActiveTicketByDevice = createServerFn({ method: "POST" }).handler(async () => {
-  const deviceId = getDeviceId();
-  if (!deviceId) return null;
+  const deviceId = getDeviceId() ?? getOrCreateDeviceId();
   const sb = publicClient();
+  await sb.rpc("expire_stale_tickets");
+  const today = todayLaPaz();
   const { data: t } = await sb
     .from("tickets")
     .select("*, area:areas(*), procedure:procedures(*)")
     .eq("device_id", deviceId)
+    .eq("day", today)
     .in("status", ["waiting", "calling", "in_service"])
     .order("created_at", { ascending: false })
     .limit(1)
@@ -98,9 +99,8 @@ export const findActiveTicketByDevice = createServerFn({ method: "POST" }).handl
 // ---------- HOST (Personal de apoyo): generate tickets on behalf of citizens ----------
 export const generateTicketAsStaff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { ci: string; areaId: string; procedureId: string }) =>
+  .inputValidator((d: { areaId: string; procedureId: string }) =>
     z.object({
-      ci: z.string().trim().min(4).max(20).regex(/^[0-9A-Za-z-]+$/),
       areaId: z.string().uuid(),
       procedureId: z.string().uuid(),
     }).parse(d),
@@ -113,9 +113,9 @@ export const generateTicketAsStaff = createServerFn({ method: "POST" })
     ]);
     if (!isHost && !isAdmin) throw new Error("Solo el personal de apoyo puede usar esta función");
 
-    // Sin _device_id: los turnos del mostrador no se cancelan entre sí
+    // Sin _device_id: el mostrador puede generar varios turnos seguidos
     const { data: row, error } = await supabase.rpc("generate_ticket", {
-      _ci: data.ci,
+      _ci: "",
       _area_id: data.areaId,
       _procedure_id: data.procedureId,
     });
@@ -132,48 +132,33 @@ export const generateTicketAsStaff = createServerFn({ method: "POST" })
     return full;
   });
 
-export const findActiveTicketByCi = createServerFn({ method: "POST" })
-  .inputValidator((d: { ci: string }) => z.object({ ci: z.string().trim().min(4).max(20) }).parse(d))
-  .handler(async ({ data }) => {
-    const sb = publicClient();
-    const { data: t } = await sb
-      .from("tickets")
-      .select("*, area:areas(*), procedure:procedures(*)")
-      .eq("ci", data.ci)
-      .in("status", ["waiting", "calling", "in_service"])
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    return t;
-  });
+/** Latest finished ticket today on this device that has not been rated yet. */
+export const findRateableTicketByDevice = createServerFn({ method: "POST" }).handler(async () => {
+  const deviceId = getDeviceId();
+  if (!deviceId) return null;
+  const sb = publicClient();
+  await sb.rpc("expire_stale_tickets");
+  const today = todayLaPaz();
+  const { data: finished } = await sb
+    .from("tickets")
+    .select("*, area:areas(*), procedure:procedures(*)")
+    .eq("device_id", deviceId)
+    .eq("status", "finished")
+    .eq("day", today)
+    .order("finished_at", { ascending: false })
+    .limit(10);
 
-/** Latest finished ticket today that has not been rated yet. */
-export const findRateableTicketByCi = createServerFn({ method: "POST" })
-  .inputValidator((d: { ci: string }) => z.object({ ci: z.string().trim().min(4).max(20) }).parse(d))
-  .handler(async ({ data }) => {
-    const sb = publicClient();
-    const today = todayLaPaz();
-    const { data: finished } = await sb
-      .from("tickets")
-      .select("*, area:areas(*), procedure:procedures(*)")
-      .eq("ci", data.ci)
-      .eq("status", "finished")
-      .eq("day", today)
-      .order("finished_at", { ascending: false })
-      .limit(10);
+  if (!finished?.length) return null;
 
-    if (!finished?.length) return null;
-
-    const ids = finished.map((t) => t.id);
-    const { data: rated } = await sb.from("ticket_ratings").select("ticket_id").in("ticket_id", ids);
-    const ratedIds = new Set((rated ?? []).map((r) => r.ticket_id));
-    return finished.find((t) => !ratedIds.has(t.id)) ?? null;
-  });
+  const ids = finished.map((t) => t.id);
+  const { data: rated } = await sb.from("ticket_ratings").select("ticket_id").in("ticket_id", ids);
+  const ratedIds = new Set((rated ?? []).map((r) => r.ticket_id));
+  return finished.find((t) => !ratedIds.has(t.id)) ?? null;
+});
 
 export const submitTicketRating = createServerFn({ method: "POST" })
-  .inputValidator((d: { ci: string; ticketId: string; score: number; comment?: string }) =>
+  .inputValidator((d: { ticketId: string; score: number; comment?: string }) =>
     z.object({
-      ci: z.string().trim().min(4).max(20),
       ticketId: z.string().uuid(),
       score: z.number().int().min(1).max(5),
       comment: z.string().trim().max(400).optional(),
@@ -181,23 +166,29 @@ export const submitTicketRating = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const sb = publicClient();
+    const deviceId = getDeviceId();
     const { data: row, error } = await sb.rpc("submit_ticket_rating", {
-      _ci: data.ci,
       _ticket_id: data.ticketId,
       _score: data.score,
       _comment: data.comment ?? null,
-    });
+      _device_id: deviceId,
+    } as never);
     if (error) throw new Error(error.message);
     return row;
   });
 
-export const cancelTicketByCi = createServerFn({ method: "POST" })
-  .inputValidator((d: { ci: string; ticketId: string }) =>
-    z.object({ ci: z.string().trim().min(4).max(20), ticketId: z.string().uuid() }).parse(d),
+export const cancelTicketByDevice = createServerFn({ method: "POST" })
+  .inputValidator((d: { ticketId: string }) =>
+    z.object({ ticketId: z.string().uuid() }).parse(d),
   )
   .handler(async ({ data }) => {
     const sb = publicClient();
-    const { error } = await sb.rpc("cancel_ticket", { _ci: data.ci, _ticket_id: data.ticketId });
+    const deviceId = getDeviceId();
+    if (!deviceId) throw new Error("Dispositivo no identificado");
+    const { error } = await sb.rpc("cancel_ticket", {
+      _ticket_id: data.ticketId,
+      _device_id: deviceId,
+    } as never);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
