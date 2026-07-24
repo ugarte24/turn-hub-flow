@@ -28,35 +28,90 @@ function printHostTicket(t: GeneratedTicket) {
   const area = t.area?.name ?? "—";
   const proc = t.procedure?.name ?? "—";
 
+  // Epson TM-T20III: rollo 80 mm (79.5±0.5), área imprimible 72.1 mm (576 dots).
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
   <title>Ticket ${code}</title>
   <style>
-    @page { size: 80mm auto; margin: 4mm; }
-    * { box-sizing: border-box; }
-    body {
+    @page {
+      size: 80mm auto;
       margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
+    }
+    html, body {
+      width: 80mm;
+      margin: 0;
+      padding: 0;
+      background: #fff;
       color: #000;
+      font-family: Arial, Helvetica, sans-serif;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
+    * { box-sizing: border-box; }
     .ticket {
       width: 72mm;
+      max-width: 72mm;
       margin: 0 auto;
+      padding: 3mm 1mm 10mm;
       text-align: center;
-      padding: 2mm 0;
     }
-    .brand { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-    .sub { font-size: 10px; margin-top: 2px; color: #333; }
-    .rule { border: none; border-top: 1px dashed #000; margin: 8px 0; }
-    .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; }
-    .code { font-size: 42px; font-weight: 900; line-height: 1.05; margin: 6px 0 10px; letter-spacing: 0.04em; }
-    .row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; margin: 4px 0; text-align: left; }
-    .row span:last-child { font-weight: 700; text-align: right; }
-    .foot { font-size: 10px; margin-top: 8px; color: #333; }
+    .brand {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      line-height: 1.25;
+    }
+    .sub {
+      font-size: 9px;
+      margin-top: 1.5mm;
+      line-height: 1.3;
+    }
+    .rule {
+      border: none;
+      border-top: 1px dashed #000;
+      margin: 3mm 0;
+    }
+    .label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .code {
+      font-size: 36px;
+      font-weight: 900;
+      line-height: 1.05;
+      margin: 2mm 0 3mm;
+      letter-spacing: 0.03em;
+      word-break: break-all;
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 2mm;
+      font-size: 11px;
+      margin: 1.5mm 0;
+      text-align: left;
+      line-height: 1.25;
+    }
+    .row span:first-child {
+      flex: 0 0 auto;
+      opacity: 0.9;
+    }
+    .row span:last-child {
+      flex: 1 1 auto;
+      font-weight: 700;
+      text-align: right;
+      word-break: break-word;
+    }
+    .foot {
+      font-size: 9px;
+      margin-top: 2mm;
+      line-height: 1.3;
+    }
   </style>
 </head>
 <body>
