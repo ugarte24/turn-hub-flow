@@ -265,7 +265,7 @@ async function playAnnounceSequence(ticketId: string, code: string, desk: string
     await waitSpeechIdle();
     playCallDing();
     await sleep(550);
-    await speakOnce(`Turno ${code} pasar a ${desk}`);
+    await speakOnce(`${code} pasar a ${desk}`);
     await waitSpeechIdle();
     await sleep(700);
   } finally {

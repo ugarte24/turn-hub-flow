@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { CheckCircle2, TicketPlus, X } from "lucide-react";
+import { CheckCircle2, Printer, TicketPlus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAreas, fetchProcedures, type Area, type Procedure } from "@/lib/sigat-queries";
 import { generateTicketAsStaff } from "@/lib/sigat.functions";
@@ -15,9 +15,90 @@ export const Route = createFileRoute("/_authenticated/host")({
 });
 
 type GeneratedTicket = {
-  id: string; code: string; ci?: string;
+  id: string; code: string; ci?: string; created_at?: string;
   area?: Area | null; procedure?: Procedure | null;
 };
+
+function printHostTicket(t: GeneratedTicket) {
+  const code = formatTicketCode(t.code);
+  const created = t.created_at ? new Date(t.created_at) : new Date();
+  const fecha = created.toLocaleDateString("es-BO");
+  const hora = created.toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit" });
+  const area = t.area?.name ?? "—";
+  const proc = t.procedure?.name ?? "—";
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Ticket ${code}</title>
+  <style>
+    @page { size: 80mm auto; margin: 4mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #000;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .ticket {
+      width: 72mm;
+      margin: 0 auto;
+      text-align: center;
+      padding: 2mm 0;
+    }
+    .brand { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    .sub { font-size: 10px; margin-top: 2px; color: #333; }
+    .rule { border: none; border-top: 1px dashed #000; margin: 8px 0; }
+    .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; }
+    .code { font-size: 42px; font-weight: 900; line-height: 1.05; margin: 6px 0 10px; letter-spacing: 0.04em; }
+    .row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; margin: 4px 0; text-align: left; }
+    .row span:last-child { font-weight: 700; text-align: right; }
+    .foot { font-size: 10px; margin-top: 8px; color: #333; }
+  </style>
+</head>
+<body>
+  <div class="ticket">
+    <div class="brand">Jefatura de Recaudaciones</div>
+    <div class="sub">SIGAT — Comprobante de turno</div>
+    <hr class="rule" />
+    <div class="label">Número de turno</div>
+    <div class="code">${code}</div>
+    <hr class="rule" />
+    <div class="row"><span>Área</span><span>${escapeHtml(area)}</span></div>
+    <div class="row"><span>Trámite</span><span>${escapeHtml(proc)}</span></div>
+    <div class="row"><span>Fecha</span><span>${escapeHtml(fecha)}</span></div>
+    <div class="row"><span>Hora</span><span>${escapeHtml(hora)}</span></div>
+    <hr class="rule" />
+    <div class="foot">Espere su llamado en la pantalla</div>
+  </div>
+  <script>
+    window.onload = function () {
+      window.focus();
+      window.print();
+    };
+  </script>
+</body>
+</html>`;
+
+  const win = window.open("", "_blank", "noopener,noreferrer,width=420,height=640");
+  if (!win) {
+    toast.error("Permite ventanas emergentes para imprimir el ticket");
+    return;
+  }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
 
 function HostPage() {
   const { user } = Route.useRouteContext();
@@ -148,9 +229,19 @@ function HostForm() {
                 {recent.map((t) => (
                   <li key={t.id} className="flex min-h-10 items-center justify-between gap-2 py-2.5">
                     <span className="font-ticket font-bold text-primary">{formatTicketCode(t.code)}</span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {t.procedure?.name ?? "—"}
-                    </span>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-xs text-muted-foreground">
+                        {t.procedure?.name ?? "—"}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={`Imprimir ${formatTicketCode(t.code)}`}
+                        onClick={() => printHostTicket(t)}
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+                      >
+                        <Printer className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -209,15 +300,44 @@ function HostForm() {
                     <dd className="text-right font-semibold">{lastTicket.procedure.name}</dd>
                   </div>
                 )}
+                {lastTicket.created_at && (
+                  <>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Fecha</dt>
+                      <dd className="text-right font-semibold">
+                        {new Date(lastTicket.created_at).toLocaleDateString("es-BO")}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Hora</dt>
+                      <dd className="text-right font-semibold">
+                        {new Date(lastTicket.created_at).toLocaleTimeString("es-BO", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </dd>
+                    </div>
+                  </>
+                )}
               </dl>
 
-              <button
-                type="button"
-                onClick={() => setLastTicket(null)}
-                className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-gradient-primary px-4 py-3 font-semibold text-primary-foreground shadow-elegant transition hover:brightness-105"
-              >
-                Continuar
-              </button>
+              <div className="mt-6 flex w-full flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => printHostTicket(lastTicket)}
+                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-primary px-4 py-3 font-semibold text-primary-foreground shadow-elegant transition hover:brightness-105"
+                >
+                  <Printer className="h-4 w-4" />
+                  Imprimir ticket
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLastTicket(null)}
+                  className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-border px-4 py-3 font-semibold hover:bg-accent"
+                >
+                  Continuar
+                </button>
+              </div>
             </div>
           </div>
         </div>
