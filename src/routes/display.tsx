@@ -21,6 +21,7 @@ function abbreviateDeskName(name: string | null | undefined) {
   if (!name) return "—";
   return name
     .replace(/\boperador(es)?\b/gi, "Op.")
+    .replace(/\bventanilla\b/gi, "Vent.")
     .replace(/\brecaudaciones\b/gi, "Rec.");
 }
 
@@ -29,8 +30,8 @@ function attendingTypeScale(count: number) {
   if (count <= 2) {
     return {
       gap: "gap-2",
-      row: "grid-cols-[6.5rem_2.75rem_minmax(0,1fr)] gap-x-3 px-4 py-3 md:grid-cols-[8rem_3rem_minmax(0,1fr)]",
-      code: "text-[clamp(3.25rem,10vh,6.5rem)]",
+      row: "grid-cols-[minmax(0,auto)_2.75rem_minmax(0,1fr)] gap-x-3 px-4 py-3 md:grid-cols-[minmax(0,auto)_3rem_minmax(0,1fr)]",
+      code: "text-[clamp(2.75rem,8vh,5.5rem)]",
       desk: "text-2xl md:text-3xl lg:text-4xl",
       arrow: "h-9 w-9 md:h-11 md:w-11",
     };
@@ -38,8 +39,8 @@ function attendingTypeScale(count: number) {
   if (count <= 4) {
     return {
       gap: "gap-2",
-      row: "grid-cols-[5.5rem_2.5rem_minmax(0,1fr)] gap-x-3 px-4 py-2.5 md:grid-cols-[7rem_2.75rem_minmax(0,1fr)]",
-      code: "text-[clamp(2.75rem,8vh,5rem)]",
+      row: "grid-cols-[minmax(0,auto)_2.5rem_minmax(0,1fr)] gap-x-3 px-4 py-2.5 md:grid-cols-[minmax(0,auto)_2.75rem_minmax(0,1fr)]",
+      code: "text-[clamp(2.25rem,6.5vh,4.5rem)]",
       desk: "text-xl md:text-2xl lg:text-3xl",
       arrow: "h-8 w-8 md:h-10 md:w-10",
     };
@@ -47,8 +48,8 @@ function attendingTypeScale(count: number) {
   if (count <= 6) {
     return {
       gap: "gap-2",
-      row: "grid-cols-[4.75rem_2.25rem_minmax(0,1fr)] gap-x-2 px-3 py-2 md:grid-cols-[6rem_2.5rem_minmax(0,1fr)]",
-      code: "text-[clamp(2.25rem,6.5vh,4.25rem)]",
+      row: "grid-cols-[minmax(0,auto)_2.25rem_minmax(0,1fr)] gap-x-2 px-3 py-2 md:grid-cols-[minmax(0,auto)_2.5rem_minmax(0,1fr)]",
+      code: "text-[clamp(1.9rem,5.5vh,3.75rem)]",
       desk: "text-lg md:text-xl lg:text-2xl",
       arrow: "h-7 w-7 md:h-8 md:w-8",
     };
@@ -56,16 +57,16 @@ function attendingTypeScale(count: number) {
   if (count <= 8) {
     return {
       gap: "gap-1.5",
-      row: "grid-cols-[4.25rem_2rem_minmax(0,1fr)] gap-x-2 px-3 py-1.5 md:grid-cols-[5.25rem_2.25rem_minmax(0,1fr)]",
-      code: "text-[clamp(1.9rem,5vh,3.25rem)]",
+      row: "grid-cols-[minmax(0,auto)_2rem_minmax(0,1fr)] gap-x-2 px-3 py-1.5 md:grid-cols-[minmax(0,auto)_2.25rem_minmax(0,1fr)]",
+      code: "text-[clamp(1.6rem,4.5vh,3rem)]",
       desk: "text-base md:text-lg lg:text-xl",
       arrow: "h-6 w-6 md:h-7 md:w-7",
     };
   }
   return {
     gap: "gap-1",
-    row: "grid-cols-[3.5rem_1.75rem_minmax(0,1fr)] gap-x-1.5 px-2.5 py-1 md:grid-cols-[4.5rem_2rem_minmax(0,1fr)]",
-    code: "text-[clamp(1.5rem,3.8vh,2.4rem)]",
+    row: "grid-cols-[minmax(0,auto)_1.75rem_minmax(0,1fr)] gap-x-1.5 px-2.5 py-1 md:grid-cols-[minmax(0,auto)_2rem_minmax(0,1fr)]",
+    code: "text-[clamp(1.35rem,3.5vh,2.25rem)]",
     desk: "text-sm md:text-base lg:text-lg",
     arrow: "h-5 w-5 md:h-6 md:w-6",
   };
@@ -539,7 +540,7 @@ function DisplayPage() {
                     }`}
                   >
                     <span
-                      className={`min-w-0 truncate font-ticket font-black leading-none text-amber-300 drop-shadow-[0_0_14px_rgba(251,191,36,0.55)] ${attendingScale.code} ${
+                      className={`whitespace-nowrap font-ticket font-black leading-none text-amber-300 drop-shadow-[0_0_14px_rgba(251,191,36,0.55)] ${attendingScale.code} ${
                         isAnimating ? "animate-tv-call-code-burst" : ""
                       }`}
                     >
