@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,9 +11,15 @@ import {
   updateTicketStatus,
 } from "@/lib/sigat.functions";
 import { formatTicketCode } from "@/lib/ticket-code";
+import {
+  ensureDesktopNotifyPermission,
+  getDesktopNotifyPermission,
+  showDesktopNotify,
+  type DesktopNotifyPermission,
+} from "@/lib/desktop-notify";
 import { toast } from "sonner";
 import {
-  PhoneCall, RefreshCcw, UserX, CheckCircle2, XCircle, PlayCircle, Building2, ArrowRightLeft, Undo2,
+  PhoneCall, RefreshCcw, UserX, CheckCircle2, XCircle, PlayCircle, Building2, ArrowRightLeft, Undo2, Bell,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/operator")({
@@ -44,6 +50,7 @@ function resolveSpKind(sp: { kind?: string | null; name: string } | null | undef
 function OperatorPage() {
   const { user } = Route.useRouteContext();
   const qc = useQueryClient();
+  const [notifyPerm, setNotifyPerm] = useState<DesktopNotifyPermission>(() => getDesktopNotifyPermission());
 
   const sps = useQuery({ queryKey: ["service_points"], queryFn: fetchServicePoints });
   const tickets = useQuery({ queryKey: ["today_tickets"], queryFn: fetchTodayTickets });
@@ -57,16 +64,6 @@ function OperatorPage() {
     localStorage.removeItem("sigat_sp");
   }, []);
 
-  useEffect(() => {
-    const ch = supabase
-      .channel("op-tickets")
-      .on("postgres_changes", { event: "*", schema: "public", table: "tickets" }, () => {
-        qc.invalidateQueries({ queryKey: ["today_tickets"] });
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [qc]);
-
   const assignedSp = useMemo(() => {
     const points = sps.data ?? [];
     return points.find((p) => p.operator_id === user.id && p.active)
@@ -76,6 +73,70 @@ function OperatorPage() {
 
   const spId = assignedSp?.id ?? null;
   const spKind = resolveSpKind(assignedSp);
+  const spKindRef = useRef(spKind);
+  const spIdRef = useRef(spId);
+  spKindRef.current = spKind;
+  spIdRef.current = spId;
+
+  // Pedir permiso de notificaciones del sistema (RUAT / ventanilla)
+  useEffect(() => {
+    if (spKind !== "ruat" && spKind !== "counter") return;
+    void ensureDesktopNotifyPermission().then(setNotifyPerm);
+  }, [spKind]);
+
+  useEffect(() => {
+    const ch = supabase
+      .channel("op-tickets")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tickets" },
+        (payload) => {
+          qc.invalidateQueries({ queryKey: ["today_tickets"] });
+
+          if (payload.eventType !== "UPDATE" && payload.eventType !== "INSERT") return;
+          const row = payload.new as {
+            id?: string;
+            code?: string;
+            status?: string;
+            transfer_to?: string | null;
+            origin_service_point_id?: string | null;
+          } | null;
+          if (!row?.id || row.status !== "waiting" || !row.transfer_to) return;
+
+          const prev = (payload.eventType === "UPDATE"
+            ? (payload.old as { transfer_to?: string | null } | null)?.transfer_to
+            : null) ?? null;
+          // Solo al pasar a un destino de derivación (evita reavisos por otros updates)
+          if (prev === row.transfer_to) return;
+
+          const kind = spKindRef.current;
+          const mySp = spIdRef.current;
+          const code = formatTicketCode(row.code);
+
+          if (kind === "counter" && row.transfer_to === "counter") {
+            const title = "Turno derivado a ventanilla";
+            const body = `${code} espera en cola de ventanilla. Pulsa «Llamar siguiente».`;
+            toast.info(`${title}: ${code}`);
+            showDesktopNotify({ title, body, tag: `transfer-counter-${row.id}` });
+            return;
+          }
+
+          if (
+            kind === "ruat"
+            && row.transfer_to === "origin"
+            && mySp
+            && row.origin_service_point_id === mySp
+          ) {
+            const title = "Turno devuelto a RUAT";
+            const body = `${code} vuelve a tu puesto. Pulsa «Llamar siguiente».`;
+            toast.info(`${title}: ${code}`);
+            showDesktopNotify({ title, body, tag: `transfer-origin-${row.id}` });
+          }
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [qc]);
 
   const callNext = useMutation({
     mutationFn: async () => callFn({ data: { servicePointId: spId! } }),
@@ -140,6 +201,7 @@ function OperatorPage() {
 
   const dayTickets = ((tickets.data as TicketRow[] | undefined) ?? []).slice(0, 20);
   const canReturnToRuat = spKind === "counter" && !!myCalling?.origin_service_point_id;
+  const needsTransferNotify = spKind === "ruat" || spKind === "counter";
 
   if (sps.isLoading) {
     return (
@@ -177,6 +239,30 @@ function OperatorPage() {
           <p className="mt-1 text-sm text-destructive">Este puesto está inactivo.</p>
         )}
       </div>
+
+      {needsTransferNotify && notifyPerm !== "granted" && notifyPerm !== "unsupported" && (
+        <div className="flex flex-col gap-2 rounded-2xl border border-warning/40 bg-warning/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-2 text-sm">
+            <Bell className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground" />
+            <p>
+              Activa las notificaciones del sistema para enterarte de derivaciones aunque estés en otro programa.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              void ensureDesktopNotifyPermission().then((p) => {
+                setNotifyPerm(p);
+                if (p === "granted") toast.success("Notificaciones activadas");
+                else if (p === "denied") toast.error("Permiso denegado en el navegador");
+              });
+            }}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-elegant"
+          >
+            <Bell className="h-4 w-4" /> Activar notificaciones
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-2 md:gap-4">
         <Stat label="En espera" value={queueCount} />
