@@ -14,6 +14,7 @@ import { formatTicketCode } from "@/lib/ticket-code";
 import {
   ensureDesktopNotifyPermission,
   getDesktopNotifyPermission,
+  registerNotifyServiceWorker,
   showDesktopNotify,
   type DesktopNotifyPermission,
 } from "@/lib/desktop-notify";
@@ -73,70 +74,84 @@ function OperatorPage() {
 
   const spId = assignedSp?.id ?? null;
   const spKind = resolveSpKind(assignedSp);
-  const spKindRef = useRef(spKind);
-  const spIdRef = useRef(spId);
-  spKindRef.current = spKind;
-  spIdRef.current = spId;
+  const needsTransferNotify = spKind === "ruat" || spKind === "counter";
 
-  // Pedir permiso de notificaciones del sistema (RUAT / ventanilla)
+  const notifiedKeysRef = useRef<Set<string>>(new Set());
+  const notifySeededRef = useRef(false);
+
+  // Al cambiar de puesto, reiniciar memoria de avisos
   useEffect(() => {
-    if (spKind !== "ruat" && spKind !== "counter") return;
-    void ensureDesktopNotifyPermission().then(setNotifyPerm);
-  }, [spKind]);
+    notifiedKeysRef.current = new Set();
+    notifySeededRef.current = false;
+  }, [spId, spKind]);
+
+  // SW + estado de permiso (el permiso real se pide con el botón)
+  useEffect(() => {
+    if (!needsTransferNotify) return;
+    setNotifyPerm(getDesktopNotifyPermission());
+    void registerNotifyServiceWorker();
+  }, [needsTransferNotify]);
 
   useEffect(() => {
     const ch = supabase
       .channel("op-tickets")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "tickets" },
-        (payload) => {
-          qc.invalidateQueries({ queryKey: ["today_tickets"] });
-
-          if (payload.eventType !== "UPDATE" && payload.eventType !== "INSERT") return;
-          const row = payload.new as {
-            id?: string;
-            code?: string;
-            status?: string;
-            transfer_to?: string | null;
-            origin_service_point_id?: string | null;
-          } | null;
-          if (!row?.id || row.status !== "waiting" || !row.transfer_to) return;
-
-          const prev = (payload.eventType === "UPDATE"
-            ? (payload.old as { transfer_to?: string | null } | null)?.transfer_to
-            : null) ?? null;
-          // Solo al pasar a un destino de derivación (evita reavisos por otros updates)
-          if (prev === row.transfer_to) return;
-
-          const kind = spKindRef.current;
-          const mySp = spIdRef.current;
-          const code = formatTicketCode(row.code);
-
-          if (kind === "counter" && row.transfer_to === "counter") {
-            const title = "Turno derivado a ventanilla";
-            const body = `${code} espera en cola de ventanilla. Pulsa «Llamar siguiente».`;
-            toast.info(`${title}: ${code}`);
-            showDesktopNotify({ title, body, tag: `transfer-counter-${row.id}` });
-            return;
-          }
-
-          if (
-            kind === "ruat"
-            && row.transfer_to === "origin"
-            && mySp
-            && row.origin_service_point_id === mySp
-          ) {
-            const title = "Turno devuelto a RUAT";
-            const body = `${code} vuelve a tu puesto. Pulsa «Llamar siguiente».`;
-            toast.info(`${title}: ${code}`);
-            showDesktopNotify({ title, body, tag: `transfer-origin-${row.id}` });
-          }
-        },
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "tickets" }, () => {
+        qc.invalidateQueries({ queryKey: ["today_tickets"] });
+      })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [qc]);
+
+  // Detectar derivaciones por la cola (más fiable que el payload realtime old/new)
+  useEffect(() => {
+    if (!needsTransferNotify || !tickets.data) return;
+    const list = tickets.data as TicketRow[];
+
+    const relevant: { key: string; title: string; body: string }[] = [];
+    for (const t of list) {
+      if (t.status !== "waiting" || !t.transfer_to) continue;
+      if (spKind === "counter" && t.transfer_to === "counter") {
+        relevant.push({
+          key: `counter:${t.id}`,
+          title: "Turno derivado a ventanilla",
+          body: `${formatTicketCode(t.code)} espera en cola de ventanilla. Pulsa «Llamar siguiente».`,
+        });
+      } else if (
+        spKind === "ruat"
+        && t.transfer_to === "origin"
+        && spId
+        && t.origin_service_point_id === spId
+      ) {
+        relevant.push({
+          key: `origin:${t.id}`,
+          title: "Turno devuelto a RUAT",
+          body: `${formatTicketCode(t.code)} vuelve a tu puesto. Pulsa «Llamar siguiente».`,
+        });
+      }
+    }
+
+    if (!notifySeededRef.current) {
+      for (const item of relevant) notifiedKeysRef.current.add(item.key);
+      notifySeededRef.current = true;
+      return;
+    }
+
+    for (const item of relevant) {
+      if (notifiedKeysRef.current.has(item.key)) continue;
+      notifiedKeysRef.current.add(item.key);
+      toast.info(`${item.title}: ${item.body.split(" ")[0]}`, { duration: 12_000 });
+      void showDesktopNotify({
+        title: item.title,
+        body: item.body,
+        tag: item.key,
+        withSound: true,
+      }).then((ok) => {
+        if (!ok && getDesktopNotifyPermission() !== "granted") {
+          toast.warning("Activa las notificaciones de Windows con el botón de la campana");
+        }
+      });
+    }
+  }, [tickets.data, needsTransferNotify, spKind, spId]);
 
   const callNext = useMutation({
     mutationFn: async () => callFn({ data: { servicePointId: spId! } }),
@@ -201,7 +216,6 @@ function OperatorPage() {
 
   const dayTickets = ((tickets.data as TicketRow[] | undefined) ?? []).slice(0, 20);
   const canReturnToRuat = spKind === "counter" && !!myCalling?.origin_service_point_id;
-  const needsTransferNotify = spKind === "ruat" || spKind === "counter";
 
   if (sps.isLoading) {
     return (
@@ -240,27 +254,69 @@ function OperatorPage() {
         )}
       </div>
 
-      {needsTransferNotify && notifyPerm !== "granted" && notifyPerm !== "unsupported" && (
-        <div className="flex flex-col gap-2 rounded-2xl border border-warning/40 bg-warning/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      {needsTransferNotify && notifyPerm !== "unsupported" && (
+        <div className={`flex flex-col gap-2 rounded-2xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${
+          notifyPerm === "granted"
+            ? "border-success/30 bg-success/10"
+            : "border-warning/40 bg-warning/10"
+        }`}>
           <div className="flex items-start gap-2 text-sm">
-            <Bell className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground" />
+            <Bell className="mt-0.5 h-4 w-4 shrink-0" />
             <p>
-              Activa las notificaciones del sistema para enterarte de derivaciones aunque estés en otro programa.
+              {notifyPerm === "granted"
+                ? "Notificaciones de Windows activadas. Puedes probarlas o dejar esta pestaña abierta en segundo plano."
+                : notifyPerm === "denied"
+                  ? "El navegador bloqueó las notificaciones. Actívalas en el candado de la barra de direcciones → Notificaciones → Permitir."
+                  : "Activa las notificaciones de Windows para enterarte de derivaciones aunque estés en otro programa."}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              void ensureDesktopNotifyPermission().then((p) => {
-                setNotifyPerm(p);
-                if (p === "granted") toast.success("Notificaciones activadas");
-                else if (p === "denied") toast.error("Permiso denegado en el navegador");
-              });
-            }}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-elegant"
-          >
-            <Bell className="h-4 w-4" /> Activar notificaciones
-          </button>
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+            {notifyPerm !== "granted" && notifyPerm !== "denied" && (
+              <button
+                type="button"
+                onClick={() => {
+                  void (async () => {
+                    await registerNotifyServiceWorker();
+                    const p = await ensureDesktopNotifyPermission();
+                    setNotifyPerm(p);
+                    if (p === "granted") {
+                      toast.success("Notificaciones activadas");
+                      await showDesktopNotify({
+                        title: "SIGAT listo",
+                        body: "Así verás los avisos de derivación en Windows.",
+                        tag: "sigat-test",
+                        withSound: true,
+                      });
+                    } else if (p === "denied") {
+                      toast.error("Permiso denegado en el navegador");
+                    }
+                  })();
+                }}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-elegant"
+              >
+                <Bell className="h-4 w-4" /> Activar notificaciones
+              </button>
+            )}
+            {notifyPerm === "granted" && (
+              <button
+                type="button"
+                onClick={() => {
+                  void showDesktopNotify({
+                    title: "Prueba SIGAT",
+                    body: "Si ves este aviso de Windows, las derivaciones también te llegarán.",
+                    tag: "sigat-test",
+                    withSound: true,
+                  }).then((ok) => {
+                    if (ok) toast.success("Notificación de prueba enviada");
+                    else toast.error("No se pudo mostrar la notificación");
+                  });
+                }}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-semibold hover:bg-accent"
+              >
+                <Bell className="h-4 w-4" /> Probar notificación
+              </button>
+            )}
+          </div>
         </div>
       )}
 
