@@ -254,50 +254,42 @@ function OperatorPage() {
         )}
       </div>
 
-      {needsTransferNotify && notifyPerm !== "unsupported" && (
-        <div className={`flex flex-col gap-2 rounded-2xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${
-          notifyPerm === "granted"
-            ? "border-success/30 bg-success/10"
-            : "border-warning/40 bg-warning/10"
-        }`}>
+      {needsTransferNotify && notifyPerm !== "unsupported" && notifyPerm !== "granted" && (
+        <div className="flex flex-col gap-2 rounded-2xl border border-warning/40 bg-warning/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-2 text-sm">
             <Bell className="mt-0.5 h-4 w-4 shrink-0" />
             <p>
-              {notifyPerm === "granted"
-                ? "Notificaciones de Windows activadas. Puedes probarlas o dejar esta pestaña abierta en segundo plano."
-                : notifyPerm === "denied"
-                  ? "El navegador bloqueó las notificaciones. Actívalas en el candado de la barra de direcciones → Notificaciones → Permitir."
-                  : "Activa las notificaciones de Windows para enterarte de derivaciones aunque estés en otro programa."}
+              {notifyPerm === "denied"
+                ? "El navegador bloqueó las notificaciones. Actívalas en el candado de la barra de direcciones → Notificaciones → Permitir."
+                : "Activa las notificaciones de Windows para enterarte de derivaciones aunque estés en otro programa."}
             </p>
           </div>
-          <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-            {notifyPerm !== "granted" && notifyPerm !== "denied" && (
-              <button
-                type="button"
-                onClick={() => {
-                  void (async () => {
-                    await registerNotifyServiceWorker();
-                    const p = await ensureDesktopNotifyPermission();
-                    setNotifyPerm(p);
-                    if (p === "granted") {
-                      toast.success("Notificaciones activadas");
-                      await showDesktopNotify({
-                        title: "SIGAT listo",
-                        body: "Así verás los avisos de derivación en Windows.",
-                        tag: "sigat-test",
-                        withSound: true,
-                      });
-                    } else if (p === "denied") {
-                      toast.error("Permiso denegado en el navegador");
-                    }
-                  })();
-                }}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-elegant"
-              >
-                <Bell className="h-4 w-4" /> Activar notificaciones
-              </button>
-            )}
-          </div>
+          {notifyPerm !== "denied" && (
+            <button
+              type="button"
+              onClick={() => {
+                void (async () => {
+                  await registerNotifyServiceWorker();
+                  const p = await ensureDesktopNotifyPermission();
+                  setNotifyPerm(p);
+                  if (p === "granted") {
+                    toast.success("Notificaciones activadas");
+                    await showDesktopNotify({
+                      title: "SIGAT listo",
+                      body: "Así verás los avisos de derivación en Windows.",
+                      tag: "sigat-test",
+                      withSound: true,
+                    });
+                  } else if (p === "denied") {
+                    toast.error("Permiso denegado en el navegador");
+                  }
+                })();
+              }}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-elegant"
+            >
+              <Bell className="h-4 w-4" /> Activar notificaciones
+            </button>
+          )}
         </div>
       )}
 
