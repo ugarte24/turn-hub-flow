@@ -297,25 +297,6 @@ function OperatorPage() {
                 <Bell className="h-4 w-4" /> Activar notificaciones
               </button>
             )}
-            {notifyPerm === "granted" && (
-              <button
-                type="button"
-                onClick={() => {
-                  void showDesktopNotify({
-                    title: "Prueba SIGAT",
-                    body: "Si ves este aviso de Windows, las derivaciones también te llegarán.",
-                    tag: "sigat-test",
-                    withSound: true,
-                  }).then((ok) => {
-                    if (ok) toast.success("Notificación de prueba enviada");
-                    else toast.error("No se pudo mostrar la notificación");
-                  });
-                }}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-semibold hover:bg-accent"
-              >
-                <Bell className="h-4 w-4" /> Probar notificación
-              </button>
-            )}
           </div>
         </div>
       )}
