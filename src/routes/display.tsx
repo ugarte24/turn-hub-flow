@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchTodayTickets } from "@/lib/sigat-queries";
-import { formatTicketCode } from "@/lib/ticket-code";
+import { formatTicketCode, speakTicketCode } from "@/lib/ticket-code";
 import { Volume2, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/display")({
@@ -434,7 +434,7 @@ function DisplayPage() {
       enqueueCallAnnounce(
         item.key,
         item.t.id,
-        formatTicketCode(item.t.code),
+        speakTicketCode(item.t.code),
         item.t.service_point?.name ?? "atención",
       );
     }
