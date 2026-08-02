@@ -17,14 +17,6 @@ type TicketRow = {
   service_point?: { name: string } | null;
 };
 
-function abbreviateDeskName(name: string | null | undefined) {
-  if (!name) return "—";
-  return name
-    .replace(/\boperador(es)?\b/gi, "Op.")
-    .replace(/\bventanilla\b/gi, "Vent.")
-    .replace(/\brecaudaciones\b/gi, "Rec.");
-}
-
 /** Escala tipográfica de la lista “en atención” según cantidad de filas. */
 function attendingTypeScale(count: number) {
   if (count <= 2) {
@@ -554,7 +546,7 @@ function DisplayPage() {
                       />
                     </span>
                     <span className={`min-w-0 text-right font-bold uppercase leading-tight tracking-wide text-white/90 break-words ${attendingScale.desk}`}>
-                      {abbreviateDeskName(t.service_point?.name)}
+                      {t.service_point?.name ?? "—"}
                     </span>
                   </li>
                 );
