@@ -8,6 +8,7 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-ticket: "Roboto Slab", ui-serif, Georgia, serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -140,20 +141,11 @@
 @utility bg-gradient-tv { background-image: var(--gradient-tv); }
 @utility shadow-elegant { box-shadow: var(--shadow-elegant); }
 @utility shadow-glow { box-shadow: var(--shadow-glow); }
-/* Códigos de turno: ceros sin punto central (evita JetBrains/IBM dotted zero) */
+/* Códigos de turno: slab-serif → I con barras y 1 con base/pico */
 @utility font-ticket {
-  font-family: var(--font-display);
-  font-variant-numeric: tabular-nums lining-nums;
-  letter-spacing: 0.06em;
-}
-
-/* ɪ (Inmueble) es small-cap: agrandar para igualar altura del dígito */
-.ticket-code-i {
-  display: inline-block;
-  font-size: 1.42em;
-  line-height: 1;
-  vertical-align: -0.12em;
-  font-weight: inherit;
+  font-family: var(--font-ticket);
+  font-variant-numeric: lining-nums;
+  letter-spacing: 0.04em;
 }
 
 /* TV: pulso suave para turno en llamado (brillo interno, no se sale) */

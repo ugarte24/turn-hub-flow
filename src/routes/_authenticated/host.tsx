@@ -35,6 +35,9 @@ function printHostTicket(t: GeneratedTicket) {
 <head>
   <meta charset="utf-8" />
   <title>Ticket ${code}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@700;900&display=swap" rel="stylesheet" />
   <style>
     @page {
       size: 80mm auto;
@@ -81,19 +84,14 @@ function printHostTicket(t: GeneratedTicket) {
       letter-spacing: 0.1em;
     }
     .code {
+      font-family: "Roboto Slab", Georgia, "Times New Roman", serif;
       font-size: 36px;
       font-weight: 900;
       line-height: 1.05;
       margin: 2mm 0 3mm;
       letter-spacing: 0.03em;
       word-break: break-all;
-    }
-    .ticket-code-i {
-      display: inline-block;
-      font-size: 1.42em;
-      line-height: 1;
-      vertical-align: -0.12em;
-      font-weight: inherit;
+      font-variant-numeric: lining-nums;
     }
     .row {
       display: flex;
