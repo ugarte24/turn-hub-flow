@@ -17,7 +17,7 @@ type SP = {
   name: string;
   active: boolean;
   operator_id: string | null;
-  kind?: "standard" | "ruat" | "counter";
+  kind?: "standard" | "ruat" | "counter" | "cashier";
 };
 type AreaOpt = { id: string; name: string; sort_order: number };
 type ProcOpt = { id: string; area_id: string; name: string };
@@ -26,12 +26,14 @@ const KIND_LABEL: Record<string, string> = {
   standard: "General",
   ruat: "Operador RUAT",
   counter: "Ventanilla",
+  cashier: "Caja",
 };
 
-function inferKind(name: string, kind?: string): "standard" | "ruat" | "counter" {
-  if (kind === "ruat" || kind === "counter" || kind === "standard") return kind;
+function inferKind(name: string, kind?: string): "standard" | "ruat" | "counter" | "cashier" {
+  if (kind === "ruat" || kind === "counter" || kind === "cashier" || kind === "standard") return kind;
   const n = name.toLowerCase();
   if (n.includes("ventanilla")) return "counter";
+  if (n.includes("caja")) return "cashier";
   if (n.includes("ruat")) return "ruat";
   return "standard";
 }
@@ -57,7 +59,7 @@ function ServicePointsPage() {
       id?: string;
       name: string;
       active: boolean;
-      kind: "standard" | "ruat" | "counter";
+      kind: "standard" | "ruat" | "counter" | "cashier";
       operatorId?: string | null;
       procedureIds: string[];
     }) => upsertFn({ data: v }),
@@ -159,7 +161,7 @@ function SPForm({
   onSave: (v: {
     name: string;
     active: boolean;
-    kind: "standard" | "ruat" | "counter";
+    kind: "standard" | "ruat" | "counter" | "cashier";
     operatorId: string | null;
     procedureIds: string[];
   }) => void;
@@ -167,7 +169,7 @@ function SPForm({
 }) {
   const [name, setName] = useState(initial.name);
   const [active, setActive] = useState(initial.active);
-  const [kind, setKind] = useState<"standard" | "ruat" | "counter">(inferKind(initial.name, initial.kind));
+  const [kind, setKind] = useState<"standard" | "ruat" | "counter" | "cashier">(inferKind(initial.name, initial.kind));
   const [operatorId, setOperatorId] = useState<string | null>(initial.operator_id);
   const [pids, setPids] = useState<string[]>(initialProcIds);
 
@@ -187,15 +189,16 @@ function SPForm({
             <label className="text-sm font-medium">Tipo de puesto</label>
             <select
               value={kind}
-              onChange={(e) => setKind(e.target.value as "standard" | "ruat" | "counter")}
+              onChange={(e) => setKind(e.target.value as "standard" | "ruat" | "counter" | "cashier")}
               className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2.5"
             >
               <option value="standard">General</option>
               <option value="ruat">Operador RUAT</option>
               <option value="counter">Ventanilla</option>
+              <option value="cashier">Caja</option>
             </select>
             <p className="mt-1 text-xs text-muted-foreground">
-              RUAT puede derivar a ventanilla; ventanilla puede devolver al mismo RUAT.
+              RUAT/ventanilla pueden derivar a caja; caja puede devolver al mismo RUAT de origen.
             </p>
           </div>
           <div>

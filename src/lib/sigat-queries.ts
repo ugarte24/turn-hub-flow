@@ -8,7 +8,7 @@ export type ServicePoint = {
   name: string;
   active: boolean;
   operator_id: string | null;
-  kind?: "standard" | "ruat" | "counter";
+  kind?: "standard" | "ruat" | "counter" | "cashier";
 };
 export type Ticket = {
   id: string; day: string; number: number; code: string; ci: string;
@@ -16,7 +16,7 @@ export type Ticket = {
   service_point_id: string | null; operator_id: string | null;
   origin_service_point_id?: string | null;
   origin_operator_id?: string | null;
-  transfer_to?: "counter" | "origin" | "ruat" | null;
+  transfer_to?: "counter" | "origin" | "ruat" | "cashier" | null;
   created_at: string; called_at: string | null; started_at: string | null; finished_at: string | null;
 };
 

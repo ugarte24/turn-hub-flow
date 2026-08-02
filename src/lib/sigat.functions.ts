@@ -195,12 +195,49 @@ export const cancelTicketByDevice = createServerFn({ method: "POST" })
   });
 
 // ---------- OPERATOR ----------
-function resolveSpKind(sp: { kind?: string | null; name: string }): "standard" | "ruat" | "counter" {
-  if (sp.kind === "ruat" || sp.kind === "counter" || sp.kind === "standard") return sp.kind;
+function resolveSpKind(sp: { kind?: string | null; name: string }): "standard" | "ruat" | "counter" | "cashier" {
+  if (sp.kind === "ruat" || sp.kind === "counter" || sp.kind === "cashier" || sp.kind === "standard") return sp.kind;
   const n = sp.name.toLowerCase();
   if (n.includes("ventanilla")) return "counter";
+  if (n.includes("caja")) return "cashier";
   if (n.includes("ruat")) return "ruat";
   return "standard";
+}
+
+type TicketOriginFields = {
+  origin_service_point_id?: string | null;
+  origin_operator_id?: string | null;
+  service_point_id: string | null;
+  operator_id: string | null;
+};
+
+/** Solo un puesto RUAT cuenta como origen; no sobrescribir si ya existe. */
+async function resolveRuatOrigin(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  ticket: TicketOriginFields,
+  userId: string,
+): Promise<{ originSp: string | null; originOp: string | null }> {
+  if (ticket.origin_service_point_id) {
+    return {
+      originSp: ticket.origin_service_point_id,
+      originOp: ticket.origin_operator_id ?? ticket.operator_id ?? userId,
+    };
+  }
+  if (!ticket.service_point_id) return { originSp: null, originOp: null };
+  const { data: sp } = await supabase
+    .from("service_points")
+    .select("kind, name")
+    .eq("id", ticket.service_point_id)
+    .maybeSingle();
+  if (!sp) return { originSp: null, originOp: null };
+  if (resolveSpKind(sp as { kind?: string | null; name: string }) !== "ruat") {
+    return { originSp: null, originOp: null };
+  }
+  return {
+    originSp: ticket.service_point_id,
+    originOp: ticket.operator_id ?? userId,
+  };
 }
 
 export const callNextTicket = createServerFn({ method: "POST" })
@@ -270,10 +307,24 @@ export const callNextTicket = createServerFn({ method: "POST" })
       next = forCounter;
     }
 
+    // Caja: turnos derivados a caja (cualquier caja libre)
+    if (!next && kind === "cashier") {
+      const { data: forCashier } = await supabase
+        .from("tickets")
+        .select("id")
+        .eq("status", "waiting")
+        .eq("day", today)
+        .eq("transfer_to", "cashier")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      next = forCashier;
+    }
+
     // Cola normal del puesto (sin derivaciones)
     if (!next) {
       if (procIds.length === 0) {
-        if (kind === "counter" || kind === "ruat") return null;
+        if (kind === "counter" || kind === "ruat" || kind === "cashier") return null;
         throw new Error("Este puesto no tiene trámites asignados");
       }
       const { data: normal } = await supabase
@@ -323,15 +374,9 @@ export const transferTicketToCounter = createServerFn({ method: "POST" })
       throw new Error("Este turno no está asignado a tu usuario");
     }
 
-    const t = ticket as {
-      origin_service_point_id?: string | null;
-      origin_operator_id?: string | null;
-      service_point_id: string | null;
-      operator_id: string | null;
-    };
-    const originSp = t.origin_service_point_id ?? t.service_point_id;
-    const originOp = t.origin_operator_id ?? t.operator_id ?? userId;
-    if (!originSp) throw new Error("No se pudo determinar el puesto RUAT de origen");
+    const t = ticket as TicketOriginFields;
+    const { originSp, originOp } = await resolveRuatOrigin(supabase, t, userId);
+    if (!originSp) throw new Error("Solo un operador RUAT puede derivar a ventanilla como origen");
 
     const { data: updated, error } = await supabase
       .from("tickets")
@@ -354,9 +399,50 @@ export const transferTicketToCounter = createServerFn({ method: "POST" })
   });
 
 /**
- * Ventanilla → RUAT.
+ * RUAT o ventanilla → Caja.
+ * Preserva el RUAT de origen (no lo sobrescribe con ventanilla).
+ */
+export const transferTicketToCashier = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { ticketId: string }) => z.object({ ticketId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: ticket, error: tErr } = await supabase.from("tickets").select("*").eq("id", data.ticketId).single();
+    if (tErr || !ticket) throw new Error("Ticket no encontrado");
+    if (ticket.status !== "calling" && ticket.status !== "in_service") {
+      throw new Error("Solo se puede derivar un turno en atención");
+    }
+    if (ticket.operator_id && ticket.operator_id !== userId) {
+      throw new Error("Este turno no está asignado a tu usuario");
+    }
+
+    const t = ticket as TicketOriginFields;
+    const { originSp, originOp } = await resolveRuatOrigin(supabase, t, userId);
+
+    const { data: updated, error } = await supabase
+      .from("tickets")
+      .update({
+        status: "waiting",
+        transfer_to: "cashier",
+        origin_service_point_id: originSp,
+        origin_operator_id: originOp,
+        service_point_id: null,
+        operator_id: null,
+        called_at: null,
+        started_at: null,
+        finished_at: null,
+      } as never)
+      .eq("id", data.ticketId)
+      .select("*, area:areas(*), procedure:procedures(*), service_point:service_points!service_point_id(*)")
+      .single();
+    if (error) throw new Error(error.message);
+    return updated;
+  });
+
+/**
+ * Ventanilla/Caja → RUAT.
  * Si el turno vino de un RUAT, vuelve a ese mismo puesto (transfer_to=origin).
- * Si el turno nació en ventanilla, va a cualquier RUAT libre (transfer_to=ruat).
+ * Si no hay origen (turno directo), va a cualquier RUAT libre (transfer_to=ruat).
  */
 export const returnTicketToOrigin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -380,6 +466,7 @@ export const returnTicketToOrigin = createServerFn({ method: "POST" })
       .update({
         status: "waiting",
         transfer_to: transferTo,
+        // conservar origin_* para que vuelva al mismo RUAT
         service_point_id: null,
         operator_id: null,
         called_at: null,
@@ -544,7 +631,7 @@ export const upsertServicePoint = createServerFn({ method: "POST" })
     id?: string;
     name: string;
     active: boolean;
-    kind?: "standard" | "ruat" | "counter";
+    kind?: "standard" | "ruat" | "counter" | "cashier";
     operatorId?: string | null;
     procedureIds: string[];
   }) =>
@@ -552,7 +639,7 @@ export const upsertServicePoint = createServerFn({ method: "POST" })
       id: z.string().uuid().optional(),
       name: z.string().trim().min(2).max(100),
       active: z.boolean(),
-      kind: z.enum(["standard", "ruat", "counter"]).optional(),
+      kind: z.enum(["standard", "ruat", "counter", "cashier"]).optional(),
       operatorId: z.string().uuid().nullable().optional(),
       procedureIds: z.array(z.string().uuid()),
     }).parse(d),
@@ -563,8 +650,9 @@ export const upsertServicePoint = createServerFn({ method: "POST" })
     if (!isAdmin) throw new Error("Solo administradores");
     const kind = data.kind ?? (
       data.name.toLowerCase().includes("ventanilla") ? "counter"
-        : data.name.toLowerCase().includes("ruat") ? "ruat"
-          : "standard"
+        : data.name.toLowerCase().includes("caja") ? "cashier"
+          : data.name.toLowerCase().includes("ruat") ? "ruat"
+            : "standard"
     );
     let spId = data.id;
     if (spId) {

@@ -7,6 +7,7 @@ import { fetchServicePoints, fetchTodayTickets } from "@/lib/sigat-queries";
 import {
   callNextTicket,
   returnTicketToOrigin,
+  transferTicketToCashier,
   transferTicketToCounter,
   updateTicketStatus,
 } from "@/lib/sigat.functions";
@@ -20,7 +21,7 @@ import {
 } from "@/lib/desktop-notify";
 import { toast } from "sonner";
 import {
-  PhoneCall, RefreshCcw, UserX, CheckCircle2, XCircle, PlayCircle, Building2, ArrowRightLeft, Undo2, Bell,
+  PhoneCall, RefreshCcw, UserX, CheckCircle2, XCircle, Building2, ArrowRightLeft, Undo2, Bell, Banknote,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/operator")({
@@ -35,15 +36,16 @@ type TicketRow = {
   service_point_id: string | null; operator_id: string | null;
   origin_service_point_id?: string | null;
   origin_operator_id?: string | null;
-  transfer_to?: "counter" | "origin" | "ruat" | null;
+  transfer_to?: "counter" | "origin" | "ruat" | "cashier" | null;
   service_point?: { name: string; kind?: string } | null;
 };
 
 function resolveSpKind(sp: { kind?: string | null; name: string } | null | undefined) {
   if (!sp) return "standard" as const;
-  if (sp.kind === "ruat" || sp.kind === "counter" || sp.kind === "standard") return sp.kind;
+  if (sp.kind === "ruat" || sp.kind === "counter" || sp.kind === "cashier" || sp.kind === "standard") return sp.kind;
   const n = sp.name.toLowerCase();
   if (n.includes("ventanilla")) return "counter" as const;
+  if (n.includes("caja")) return "cashier" as const;
   if (n.includes("ruat")) return "ruat" as const;
   return "standard" as const;
 }
@@ -59,6 +61,7 @@ function OperatorPage() {
   const callFn = useServerFn(callNextTicket);
   const upFn = useServerFn(updateTicketStatus);
   const transferFn = useServerFn(transferTicketToCounter);
+  const transferCashierFn = useServerFn(transferTicketToCashier);
   const returnFn = useServerFn(returnTicketToOrigin);
 
   useEffect(() => {
@@ -74,7 +77,7 @@ function OperatorPage() {
 
   const spId = assignedSp?.id ?? null;
   const spKind = resolveSpKind(assignedSp);
-  const needsTransferNotify = spKind === "ruat" || spKind === "counter";
+  const needsTransferNotify = spKind === "ruat" || spKind === "counter" || spKind === "cashier";
 
   const notifiedKeysRef = useRef<Set<string>>(new Set());
   const notifySeededRef = useRef(false);
@@ -115,6 +118,12 @@ function OperatorPage() {
           key: `counter:${t.id}`,
           title: "Turno derivado a ventanilla",
           body: `${formatTicketCode(t.code)} espera en cola de ventanilla. Pulsa «Llamar siguiente».`,
+        });
+      } else if (spKind === "cashier" && t.transfer_to === "cashier") {
+        relevant.push({
+          key: `cashier:${t.id}`,
+          title: "Turno derivado a caja",
+          body: `${formatTicketCode(t.code)} espera en cola de caja. Pulsa «Llamar siguiente».`,
         });
       } else if (
         spKind === "ruat"
@@ -188,6 +197,15 @@ function OperatorPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const doTransferCashier = useMutation({
+    mutationFn: async (ticketId: string) => transferCashierFn({ data: { ticketId } }),
+    onSuccess: () => {
+      toast.success("Derivado a caja");
+      qc.invalidateQueries({ queryKey: ["today_tickets"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const doReturn = useMutation({
     mutationFn: async (ticketId: string) => returnFn({ data: { ticketId } }),
     onSuccess: (_t, ticketId) => {
@@ -212,6 +230,14 @@ function OperatorPage() {
     if (spKind === "counter") {
       return list.filter((t) => t.status === "waiting" && t.transfer_to === "counter").length;
     }
+    if (spKind === "cashier") {
+      return list.filter((t) =>
+        t.status === "waiting" && (
+          t.transfer_to === "cashier"
+          || (t.transfer_to == null && /^C-/i.test(t.code))
+        ),
+      ).length;
+    }
     if (spKind === "ruat" && spId) {
       return list.filter((t) =>
         t.status === "waiting" && (
@@ -225,7 +251,8 @@ function OperatorPage() {
   }, [tickets.data, spKind, spId]);
 
   const dayTickets = ((tickets.data as TicketRow[] | undefined) ?? []).slice(0, 20);
-  const canTransferToRuat = spKind === "counter" && !!myCalling;
+  const canTransferToRuat = (spKind === "counter" || spKind === "cashier") && !!myCalling;
+  const canTransferToCashier = (spKind === "ruat" || spKind === "counter") && !!myCalling;
 
   if (sps.isLoading) {
     return (
@@ -255,9 +282,10 @@ function OperatorPage() {
         <p className="text-[10px] uppercase tracking-widest text-muted-foreground md:text-xs">Puesto de atención</p>
         <h1 className="text-2xl font-extrabold leading-tight md:text-3xl">{assignedSp.name}</h1>
         <p className="mt-1 text-xs text-muted-foreground">
-          {spKind === "ruat" ? "Operador RUAT — puede derivar a ventanilla"
-            : spKind === "counter" ? "Ventanilla — puede derivar a RUAT"
-              : "Puesto general"}
+          {spKind === "ruat" ? "Operador RUAT — puede derivar a ventanilla o caja"
+            : spKind === "counter" ? "Ventanilla — puede derivar a caja o RUAT"
+              : spKind === "cashier" ? "Caja — puede devolver al RUAT de origen"
+                : "Puesto general"}
         </p>
         {!assignedSp.active && (
           <p className="mt-1 text-sm text-destructive">Este puesto está inactivo.</p>
@@ -327,14 +355,18 @@ function OperatorPage() {
 
           <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2 md:mt-6 md:grid-cols-3">
             <ActionBtn onClick={() => doUpdate.mutate({ id: myCalling.id, status: "calling" })} icon={RefreshCcw} label="Repetir llamado" />
-            {myCalling.status === "calling" && (
-              <ActionBtn primary onClick={() => doUpdate.mutate({ id: myCalling.id, status: "in_service" })} icon={PlayCircle} label="Iniciar atención" />
-            )}
             {spKind === "ruat" && (
               <ActionBtn
                 onClick={() => doTransfer.mutate(myCalling.id)}
                 icon={ArrowRightLeft}
                 label={doTransfer.isPending ? "Derivando..." : "Derivar a ventanilla"}
+              />
+            )}
+            {canTransferToCashier && (
+              <ActionBtn
+                onClick={() => doTransferCashier.mutate(myCalling.id)}
+                icon={Banknote}
+                label={doTransferCashier.isPending ? "Derivando..." : "Derivar a caja"}
               />
             )}
             {canTransferToRuat && (
@@ -454,6 +486,9 @@ function StatusPill({ s, transferTo }: { s: string; transferTo?: string | null }
   }
   if (s === "waiting" && transferTo === "ruat") {
     return <span className="inline-flex shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary md:text-xs">A RUAT</span>;
+  }
+  if (s === "waiting" && transferTo === "cashier") {
+    return <span className="inline-flex shrink-0 rounded-full bg-warning/20 px-2 py-0.5 text-[10px] font-medium text-warning-foreground md:text-xs">A caja</span>;
   }
   const map: Record<string, { label: string; cls: string }> = {
     waiting: { label: "En espera", cls: "bg-muted text-foreground" },
