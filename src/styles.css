@@ -143,8 +143,17 @@
 /* Códigos de turno: ceros sin punto central (evita JetBrains/IBM dotted zero) */
 @utility font-ticket {
   font-family: var(--font-display);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums lining-nums;
   letter-spacing: 0.06em;
+}
+
+/* ɪ (Inmueble) es small-cap: agrandar para igualar altura del dígito */
+.ticket-code-i {
+  display: inline-block;
+  font-size: 1.42em;
+  line-height: 1;
+  vertical-align: -0.12em;
+  font-weight: inherit;
 }
 
 /* TV: pulso suave para turno en llamado (brillo interno, no se sale) */

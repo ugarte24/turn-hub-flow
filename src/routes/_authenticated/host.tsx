@@ -7,7 +7,7 @@ import { CheckCircle2, Printer, TicketPlus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAreas, fetchProcedures, type Area, type Procedure } from "@/lib/sigat-queries";
 import { generateTicketAsStaff } from "@/lib/sigat.functions";
-import { formatTicketCode } from "@/lib/ticket-code";
+import { formatTicketCode, formatTicketCodeHtml, TicketCodeView } from "@/lib/ticket-code";
 import { todayLaPaz } from "@/lib/date";
 
 export const Route = createFileRoute("/_authenticated/host")({
@@ -22,6 +22,7 @@ type GeneratedTicket = {
 
 function printHostTicket(t: GeneratedTicket) {
   const code = formatTicketCode(t.code);
+  const codeHtml = formatTicketCodeHtml(t.code);
   const created = t.created_at ? new Date(t.created_at) : new Date();
   const fecha = created.toLocaleDateString("es-BO");
   const hora = created.toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit" });
@@ -87,6 +88,13 @@ function printHostTicket(t: GeneratedTicket) {
       letter-spacing: 0.03em;
       word-break: break-all;
     }
+    .ticket-code-i {
+      display: inline-block;
+      font-size: 1.42em;
+      line-height: 1;
+      vertical-align: -0.12em;
+      font-weight: inherit;
+    }
     .row {
       display: flex;
       justify-content: space-between;
@@ -120,7 +128,7 @@ function printHostTicket(t: GeneratedTicket) {
     <div class="sub">SIGAT — Comprobante de turno</div>
     <hr class="rule" />
     <div class="label">Número de turno</div>
-    <div class="code">${code}</div>
+    <div class="code">${codeHtml}</div>
     <hr class="rule" />
     <div class="row"><span>Área</span><span>${escapeHtml(area)}</span></div>
     <div class="row"><span>Trámite</span><span>${escapeHtml(proc)}</span></div>
@@ -345,7 +353,7 @@ function HostForm({ userId }: { userId: string }) {
               <ul className="mt-2 divide-y divide-border text-sm">
                 {recent.map((t) => (
                   <li key={t.id} className="flex min-h-10 items-center justify-between gap-2 py-2.5">
-                    <span className="font-ticket font-bold text-primary">{formatTicketCode(t.code)}</span>
+                    <span className="font-ticket font-bold text-primary"><TicketCodeView code={t.code} /></span>
                     <div className="flex min-w-0 items-center gap-2">
                       <span className="truncate text-xs text-muted-foreground">
                         {t.procedure?.name ?? "—"}
@@ -401,7 +409,7 @@ function HostForm({ userId }: { userId: string }) {
                 Número de turno
               </p>
               <p className="mt-1 font-ticket text-6xl font-extrabold tracking-tight text-primary sm:text-7xl animate-host-ticket-pop">
-                {formatTicketCode(lastTicket.code)}
+                <TicketCodeView code={lastTicket.code} />
               </p>
 
               <dl className="mt-6 w-full space-y-2.5 rounded-2xl border border-border bg-accent/40 p-4 text-left text-sm">

@@ -10,7 +10,7 @@ import {
   transferTicketToCounter,
   updateTicketStatus,
 } from "@/lib/sigat.functions";
-import { formatTicketCode } from "@/lib/ticket-code";
+import { formatTicketCode, TicketCodeView } from "@/lib/ticket-code";
 import {
   ensureDesktopNotifyPermission,
   getDesktopNotifyPermission,
@@ -305,7 +305,7 @@ function OperatorPage() {
 
       <div className="grid grid-cols-3 gap-2 md:gap-4">
         <Stat label="En espera" value={queueCount} />
-        <Stat label="Mi turno" value={myCalling ? formatTicketCode(myCalling.code) : "—"} highlight />
+        <Stat label="Mi turno" value={myCalling ? <TicketCodeView code={myCalling.code} /> : "—"} highlight />
         <Stat label="Estado" value={myCalling ? (myCalling.status === "calling" ? "Llamando" : "Atención") : "Libre"} />
       </div>
 
@@ -314,7 +314,7 @@ function OperatorPage() {
           <div className="text-center">
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground md:text-xs">Ticket actual</p>
             <p className="mt-1 font-ticket text-6xl font-black leading-none text-primary md:mt-2 md:text-7xl">
-              {formatTicketCode(myCalling.code)}
+              <TicketCodeView code={myCalling.code} />
             </p>
             <div className="mt-3 flex flex-wrap justify-center gap-1.5 text-xs md:mt-3 md:gap-2 md:text-sm">
               <span className="rounded-full bg-accent px-2.5 py-1 font-medium md:px-3">{myCalling.area?.name}</span>
@@ -379,7 +379,7 @@ function OperatorPage() {
             dayTickets.map((t) => (
               <div key={t.id} className="rounded-2xl border border-border bg-card px-3.5 py-3">
                 <div className="flex items-start justify-between gap-3">
-                  <span className="font-ticket text-xl font-bold text-primary">{formatTicketCode(t.code)}</span>
+                  <span className="font-ticket text-xl font-bold text-primary"><TicketCodeView code={t.code} /></span>
                   <StatusPill s={t.status} transferTo={t.transfer_to} />
                 </div>
                 <p className="mt-1 text-sm font-medium leading-snug">{t.procedure?.name ?? "—"}</p>
@@ -402,7 +402,7 @@ function OperatorPage() {
             <tbody>
               {dayTickets.map((t) => (
                 <tr key={t.id} className="border-t border-border">
-                  <td className="px-4 py-2 font-ticket font-bold">{formatTicketCode(t.code)}</td>
+                  <td className="px-4 py-2 font-ticket font-bold"><TicketCodeView code={t.code} /></td>
                   <td className="px-4 py-2">{t.procedure?.name}</td>
                   <td className="px-4 py-2"><StatusPill s={t.status} transferTo={t.transfer_to} /></td>
                   <td className="px-4 py-2 text-muted-foreground">{t.service_point?.name ?? "—"}</td>
@@ -416,7 +416,7 @@ function OperatorPage() {
   );
 }
 
-function Stat({ label, value, highlight }: { label: string; value: string | number; highlight?: boolean }) {
+function Stat({ label, value, highlight }: { label: string; value: React.ReactNode; highlight?: boolean }) {
   return (
     <div className={`rounded-xl border border-border bg-card p-3 md:rounded-2xl md:p-5 ${highlight ? "border-primary/30 bg-primary/5" : ""}`}>
       <p className="text-[9px] uppercase tracking-widest text-muted-foreground md:text-xs">{label}</p>

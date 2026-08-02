@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchTodayTickets } from "@/lib/sigat-queries";
-import { formatTicketCode, speakTicketCode } from "@/lib/ticket-code";
+import { speakTicketCode, TicketCodeView } from "@/lib/ticket-code";
 import { Volume2, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/display")({
@@ -480,7 +480,7 @@ function DisplayPage() {
                     key={t.id}
                     className="rounded-lg border border-white/15 bg-white/10 px-3 py-1.5"
                   >
-                    <span className="font-ticket text-2xl font-bold leading-none md:text-3xl">{formatTicketCode(t.code)}</span>
+                    <span className="font-ticket text-2xl font-bold leading-none md:text-3xl"><TicketCodeView code={t.code} /></span>
                   </li>
                 ))}
                 {moreWaiting > 0 && (
@@ -536,7 +536,7 @@ function DisplayPage() {
                         isAnimating ? "animate-tv-call-code-burst" : ""
                       }`}
                     >
-                      {formatTicketCode(t.code)}
+                      <TicketCodeView code={t.code} />
                     </span>
                     <span className="flex items-center justify-center">
                       <ArrowRight
