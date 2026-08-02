@@ -16,7 +16,7 @@ export type Ticket = {
   service_point_id: string | null; operator_id: string | null;
   origin_service_point_id?: string | null;
   origin_operator_id?: string | null;
-  transfer_to?: "counter" | "origin" | null;
+  transfer_to?: "counter" | "origin" | "ruat" | null;
   created_at: string; called_at: string | null; started_at: string | null; finished_at: string | null;
 };
 

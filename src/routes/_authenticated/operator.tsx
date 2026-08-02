@@ -35,7 +35,7 @@ type TicketRow = {
   service_point_id: string | null; operator_id: string | null;
   origin_service_point_id?: string | null;
   origin_operator_id?: string | null;
-  transfer_to?: "counter" | "origin" | null;
+  transfer_to?: "counter" | "origin" | "ruat" | null;
   service_point?: { name: string; kind?: string } | null;
 };
 
@@ -127,6 +127,12 @@ function OperatorPage() {
           title: "Turno devuelto a RUAT",
           body: `${formatTicketCode(t.code)} vuelve a tu puesto. Pulsa «Llamar siguiente».`,
         });
+      } else if (spKind === "ruat" && t.transfer_to === "ruat") {
+        relevant.push({
+          key: `ruat:${t.id}`,
+          title: "Turno derivado a RUAT",
+          body: `${formatTicketCode(t.code)} espera en cola RUAT. Pulsa «Llamar siguiente».`,
+        });
       }
     }
 
@@ -184,8 +190,11 @@ function OperatorPage() {
 
   const doReturn = useMutation({
     mutationFn: async (ticketId: string) => returnFn({ data: { ticketId } }),
-    onSuccess: () => {
-      toast.success("Devuelto al operador RUAT de origen");
+    onSuccess: (_t, ticketId) => {
+      const row = (tickets.data as TicketRow[] | undefined)?.find((x) => x.id === ticketId);
+      toast.success(row?.origin_service_point_id
+        ? "Devuelto al operador RUAT de origen"
+        : "Derivado a RUAT");
       qc.invalidateQueries({ queryKey: ["today_tickets"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -207,6 +216,7 @@ function OperatorPage() {
       return list.filter((t) =>
         t.status === "waiting" && (
           (t.transfer_to === "origin" && t.origin_service_point_id === spId)
+          || t.transfer_to === "ruat"
           || t.transfer_to == null
         ),
       ).length;
@@ -215,7 +225,7 @@ function OperatorPage() {
   }, [tickets.data, spKind, spId]);
 
   const dayTickets = ((tickets.data as TicketRow[] | undefined) ?? []).slice(0, 20);
-  const canReturnToRuat = spKind === "counter" && !!myCalling?.origin_service_point_id;
+  const canTransferToRuat = spKind === "counter" && !!myCalling;
 
   if (sps.isLoading) {
     return (
@@ -246,7 +256,7 @@ function OperatorPage() {
         <h1 className="text-2xl font-extrabold leading-tight md:text-3xl">{assignedSp.name}</h1>
         <p className="mt-1 text-xs text-muted-foreground">
           {spKind === "ruat" ? "Operador RUAT — puede derivar a ventanilla"
-            : spKind === "counter" ? "Ventanilla — puede devolver al RUAT de origen"
+            : spKind === "counter" ? "Ventanilla — puede derivar a RUAT"
               : "Puesto general"}
         </p>
         {!assignedSp.active && (
@@ -327,11 +337,15 @@ function OperatorPage() {
                 label={doTransfer.isPending ? "Derivando..." : "Derivar a ventanilla"}
               />
             )}
-            {canReturnToRuat && (
+            {canTransferToRuat && (
               <ActionBtn
                 onClick={() => doReturn.mutate(myCalling.id)}
-                icon={Undo2}
-                label={doReturn.isPending ? "Devolviendo..." : "Devolver a RUAT"}
+                icon={myCalling.origin_service_point_id ? Undo2 : ArrowRightLeft}
+                label={
+                  doReturn.isPending
+                    ? (myCalling.origin_service_point_id ? "Devolviendo..." : "Derivando...")
+                    : (myCalling.origin_service_point_id ? "Devolver a RUAT" : "Derivar a RUAT")
+                }
               />
             )}
             <ActionBtn variant="success" onClick={() => doUpdate.mutate({ id: myCalling.id, status: "finished" })} icon={CheckCircle2} label="Finalizar" />
@@ -437,6 +451,9 @@ function StatusPill({ s, transferTo }: { s: string; transferTo?: string | null }
   }
   if (s === "waiting" && transferTo === "origin") {
     return <span className="inline-flex shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary md:text-xs">Vuelve a RUAT</span>;
+  }
+  if (s === "waiting" && transferTo === "ruat") {
+    return <span className="inline-flex shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary md:text-xs">A RUAT</span>;
   }
   const map: Record<string, { label: string; cls: string }> = {
     waiting: { label: "En espera", cls: "bg-muted text-foreground" },

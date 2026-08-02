@@ -242,6 +242,20 @@ export const callNextTicket = createServerFn({ method: "POST" })
       next = returning;
     }
 
+    // RUAT: turnos derivados desde ventanilla (cualquier RUAT libre)
+    if (!next && kind === "ruat") {
+      const { data: forRuat } = await supabase
+        .from("tickets")
+        .select("id")
+        .eq("status", "waiting")
+        .eq("day", today)
+        .eq("transfer_to", "ruat")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      next = forRuat;
+    }
+
     // Ventanilla: cualquier turno derivado (la que esté libre)
     if (!next && kind === "counter") {
       const { data: forCounter } = await supabase
@@ -339,7 +353,11 @@ export const transferTicketToCounter = createServerFn({ method: "POST" })
     return updated;
   });
 
-/** Ventanilla devuelve el turno al mismo operador/puesto RUAT de origen. */
+/**
+ * Ventanilla → RUAT.
+ * Si el turno vino de un RUAT, vuelve a ese mismo puesto (transfer_to=origin).
+ * Si el turno nació en ventanilla, va a cualquier RUAT libre (transfer_to=ruat).
+ */
 export const returnTicketToOrigin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { ticketId: string }) => z.object({ ticketId: z.string().uuid() }).parse(d))
@@ -348,20 +366,20 @@ export const returnTicketToOrigin = createServerFn({ method: "POST" })
     const { data: ticket, error: tErr } = await supabase.from("tickets").select("*").eq("id", data.ticketId).single();
     if (tErr || !ticket) throw new Error("Ticket no encontrado");
     if (ticket.status !== "calling" && ticket.status !== "in_service") {
-      throw new Error("Solo se puede devolver un turno en atención");
+      throw new Error("Solo se puede derivar un turno en atención");
     }
     if (ticket.operator_id && ticket.operator_id !== userId) {
       throw new Error("Este turno no está asignado a tu usuario");
     }
 
     const originSp = (ticket as { origin_service_point_id?: string | null }).origin_service_point_id;
-    if (!originSp) throw new Error("Este turno no tiene un operador RUAT de origen para devolver");
+    const transferTo = originSp ? "origin" : "ruat";
 
     const { data: updated, error } = await supabase
       .from("tickets")
       .update({
         status: "waiting",
-        transfer_to: "origin",
+        transfer_to: transferTo,
         service_point_id: null,
         operator_id: null,
         called_at: null,
