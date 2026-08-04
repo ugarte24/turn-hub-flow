@@ -24,7 +24,7 @@ type ProcOpt = { id: string; area_id: string; name: string };
 
 const KIND_LABEL: Record<string, string> = {
   standard: "General",
-  ruat: "Operador RUAT",
+  ruat: "RUAT / Jefe",
   counter: "Ventanilla",
   cashier: "Caja",
 };
@@ -34,7 +34,7 @@ function inferKind(name: string, kind?: string): "standard" | "ruat" | "counter"
   const n = name.toLowerCase();
   if (n.includes("ventanilla")) return "counter";
   if (n.includes("caja")) return "cashier";
-  if (n.includes("ruat")) return "ruat";
+  if (n.includes("ruat") || n.includes("jefe")) return "ruat";
   return "standard";
 }
 
@@ -193,12 +193,12 @@ function SPForm({
               className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2.5"
             >
               <option value="standard">General</option>
-              <option value="ruat">Operador RUAT</option>
+              <option value="ruat">RUAT / Jefe</option>
               <option value="counter">Ventanilla</option>
               <option value="cashier">Caja</option>
             </select>
             <p className="mt-1 text-xs text-muted-foreground">
-              RUAT/ventanilla pueden derivar a caja; caja puede devolver al mismo RUAT de origen.
+              RUAT y Jefe pueden derivar a ventanilla/caja; al devolver regresan al mismo origen.
             </p>
           </div>
           <div>

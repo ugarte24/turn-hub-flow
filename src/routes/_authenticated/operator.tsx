@@ -46,8 +46,12 @@ function resolveSpKind(sp: { kind?: string | null; name: string } | null | undef
   const n = sp.name.toLowerCase();
   if (n.includes("ventanilla")) return "counter" as const;
   if (n.includes("caja")) return "cashier" as const;
-  if (n.includes("ruat")) return "ruat" as const;
+  if (n.includes("ruat") || n.includes("jefe")) return "ruat" as const;
   return "standard" as const;
+}
+
+function isJefeDesk(name: string | null | undefined) {
+  return (name ?? "").toLowerCase().includes("jefe");
 }
 
 function OperatorPage() {
@@ -133,14 +137,14 @@ function OperatorPage() {
       ) {
         relevant.push({
           key: `origin:${t.id}`,
-          title: "Turno devuelto a RUAT",
+          title: "Turno devuelto al origen",
           body: `${formatTicketCode(t.code)} vuelve a tu puesto. Pulsa «Llamar siguiente».`,
         });
       } else if (spKind === "ruat" && t.transfer_to === "ruat") {
         relevant.push({
           key: `ruat:${t.id}`,
-          title: "Turno derivado a RUAT",
-          body: `${formatTicketCode(t.code)} espera en cola RUAT. Pulsa «Llamar siguiente».`,
+          title: "Turno derivado a RUAT / Jefe",
+          body: `${formatTicketCode(t.code)} espera en cola. Pulsa «Llamar siguiente».`,
         });
       }
     }
@@ -211,8 +215,8 @@ function OperatorPage() {
     onSuccess: (_t, ticketId) => {
       const row = (tickets.data as TicketRow[] | undefined)?.find((x) => x.id === ticketId);
       toast.success(row?.origin_service_point_id
-        ? "Devuelto al operador RUAT de origen"
-        : "Derivado a RUAT");
+        ? "Devuelto al puesto de origen"
+        : "Derivado a RUAT / Jefe");
       qc.invalidateQueries({ queryKey: ["today_tickets"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -282,9 +286,12 @@ function OperatorPage() {
         <p className="text-[10px] uppercase tracking-widest text-muted-foreground md:text-xs">Puesto de atención</p>
         <h1 className="text-2xl font-extrabold leading-tight md:text-3xl">{assignedSp.name}</h1>
         <p className="mt-1 text-xs text-muted-foreground">
-          {spKind === "ruat" ? "Operador RUAT — puede derivar a ventanilla o caja"
-            : spKind === "counter" ? "Ventanilla — puede derivar a caja o RUAT"
-              : spKind === "cashier" ? "Caja — puede devolver al RUAT de origen"
+          {spKind === "ruat"
+            ? (isJefeDesk(assignedSp.name)
+              ? "Jefe de Recaudaciones — puede derivar a ventanilla o caja"
+              : "Operador RUAT — puede derivar a ventanilla o caja")
+            : spKind === "counter" ? "Ventanilla — puede derivar a caja o devolver al origen"
+              : spKind === "cashier" ? "Caja — puede devolver al origen (RUAT o Jefe)"
                 : "Puesto general"}
         </p>
         {!assignedSp.active && (
@@ -376,7 +383,7 @@ function OperatorPage() {
                 label={
                   doReturn.isPending
                     ? (myCalling.origin_service_point_id ? "Devolviendo..." : "Derivando...")
-                    : (myCalling.origin_service_point_id ? "Devolver a RUAT" : "Derivar a RUAT")
+                    : (myCalling.origin_service_point_id ? "Devolver al origen" : "Derivar a RUAT / Jefe")
                 }
               />
             )}
@@ -482,10 +489,10 @@ function StatusPill({ s, transferTo }: { s: string; transferTo?: string | null }
     return <span className="inline-flex shrink-0 rounded-full bg-warning/20 px-2 py-0.5 text-[10px] font-medium text-warning-foreground md:text-xs">A ventanilla</span>;
   }
   if (s === "waiting" && transferTo === "origin") {
-    return <span className="inline-flex shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary md:text-xs">Vuelve a RUAT</span>;
+    return <span className="inline-flex shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary md:text-xs">Vuelve al origen</span>;
   }
   if (s === "waiting" && transferTo === "ruat") {
-    return <span className="inline-flex shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary md:text-xs">A RUAT</span>;
+    return <span className="inline-flex shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary md:text-xs">A RUAT / Jefe</span>;
   }
   if (s === "waiting" && transferTo === "cashier") {
     return <span className="inline-flex shrink-0 rounded-full bg-warning/20 px-2 py-0.5 text-[10px] font-medium text-warning-foreground md:text-xs">A caja</span>;

@@ -200,7 +200,8 @@ function resolveSpKind(sp: { kind?: string | null; name: string }): "standard" |
   const n = sp.name.toLowerCase();
   if (n.includes("ventanilla")) return "counter";
   if (n.includes("caja")) return "cashier";
-  if (n.includes("ruat")) return "ruat";
+  // RUAT y Jefe de Recaudaciones: mismo flujo de origen/derivación
+  if (n.includes("ruat") || n.includes("jefe")) return "ruat";
   return "standard";
 }
 
@@ -211,7 +212,7 @@ type TicketOriginFields = {
   operator_id: string | null;
 };
 
-/** Solo un puesto RUAT cuenta como origen; no sobrescribir si ya existe. */
+/** Solo RUAT / Jefe cuentan como origen; no sobrescribir si ya existe. */
 async function resolveRuatOrigin(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
@@ -651,7 +652,7 @@ export const upsertServicePoint = createServerFn({ method: "POST" })
     const kind = data.kind ?? (
       data.name.toLowerCase().includes("ventanilla") ? "counter"
         : data.name.toLowerCase().includes("caja") ? "cashier"
-          : data.name.toLowerCase().includes("ruat") ? "ruat"
+          : (data.name.toLowerCase().includes("ruat") || data.name.toLowerCase().includes("jefe")) ? "ruat"
             : "standard"
     );
     let spId = data.id;
