@@ -454,7 +454,7 @@ function DisplayPage() {
 
   return (
     <div className="relative h-screen max-h-screen overflow-hidden bg-gradient-tv text-white">
-      <div className="grid h-full grid-cols-1 md:grid-cols-[1.55fr_1fr]">
+      <div className="grid h-full grid-cols-1 md:grid-cols-[1.25fr_1fr]">
       {/* Izquierda: cabecera + video horizontal + pie */}
       <section className="flex min-h-0 flex-col border-b border-white/10 md:border-b-0 md:border-r md:border-white/10">
         <header className="flex shrink-0 items-center gap-3 border-b border-white/10 bg-white/5 px-4 py-2.5 md:px-5 md:py-3">
