@@ -54,6 +54,10 @@ function isJefeDesk(name: string | null | undefined) {
   return (name ?? "").toLowerCase().includes("jefe");
 }
 
+function originReturnLabel(originName: string | null | undefined) {
+  return isJefeDesk(originName) ? "Devolver a Jefe" : "Devolver a RUAT";
+}
+
 function OperatorPage() {
   const { user } = Route.useRouteContext();
   const qc = useQueryClient();
@@ -214,9 +218,12 @@ function OperatorPage() {
     mutationFn: async (ticketId: string) => returnFn({ data: { ticketId } }),
     onSuccess: (_t, ticketId) => {
       const row = (tickets.data as TicketRow[] | undefined)?.find((x) => x.id === ticketId);
-      toast.success(row?.origin_service_point_id
-        ? "Devuelto al puesto de origen"
-        : "Derivado a RUAT / Jefe");
+      if (!row?.origin_service_point_id) {
+        toast.success("Derivado a RUAT / Jefe");
+      } else {
+        const originName = (sps.data ?? []).find((p) => p.id === row.origin_service_point_id)?.name;
+        toast.success(isJefeDesk(originName) ? "Devuelto al Jefe" : "Devuelto al RUAT de origen");
+      }
       qc.invalidateQueries({ queryKey: ["today_tickets"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -257,6 +264,16 @@ function OperatorPage() {
   const dayTickets = ((tickets.data as TicketRow[] | undefined) ?? []).slice(0, 20);
   const canTransferToRuat = (spKind === "counter" || spKind === "cashier") && !!myCalling;
   const canTransferToCashier = (spKind === "ruat" || spKind === "counter") && !!myCalling;
+
+  const originDeskName = useMemo(() => {
+    if (!myCalling?.origin_service_point_id) return null;
+    return (sps.data ?? []).find((p) => p.id === myCalling.origin_service_point_id)?.name ?? null;
+  }, [myCalling?.origin_service_point_id, sps.data]);
+
+  const returnOriginLabel = myCalling?.origin_service_point_id
+    ? originReturnLabel(originDeskName)
+    : "Derivar a RUAT / Jefe";
+  const returnOriginPendingLabel = myCalling?.origin_service_point_id ? "Devolviendo..." : "Derivando...";
 
   if (sps.isLoading) {
     return (
@@ -380,11 +397,7 @@ function OperatorPage() {
               <ActionBtn
                 onClick={() => doReturn.mutate(myCalling.id)}
                 icon={myCalling.origin_service_point_id ? Undo2 : ArrowRightLeft}
-                label={
-                  doReturn.isPending
-                    ? (myCalling.origin_service_point_id ? "Devolviendo..." : "Derivando...")
-                    : (myCalling.origin_service_point_id ? "Devolver al origen" : "Derivar a RUAT / Jefe")
-                }
+                label={doReturn.isPending ? returnOriginPendingLabel : returnOriginLabel}
               />
             )}
             <ActionBtn variant="success" onClick={() => doUpdate.mutate({ id: myCalling.id, status: "finished" })} icon={CheckCircle2} label="Finalizar" />
