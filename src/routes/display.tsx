@@ -12,6 +12,8 @@ export const Route = createFileRoute("/display")({
 
 type TicketRow = {
   id: string; code: string; status: string; called_at: string | null;
+  created_at?: string;
+  preferential?: boolean;
   area?: { name: string } | null;
   procedure?: { name: string } | null;
   service_point?: { name: string } | null;
@@ -397,9 +399,18 @@ function DisplayPage() {
     .filter((t): t is TicketRow => !!t);
   const attendingScale = attendingTypeScale(attending.length);
   const showVideo = tv.videoEnabled && tv.videoUrl.trim().length > 0 && tv.videoSource !== "none";
-  const waiting = tickets.filter((t) => t.status === "waiting");
-  const upcoming = waiting.slice(-23).reverse();
-  const moreWaiting = waiting.length - upcoming.length;
+  const waiting = tickets
+    .filter((t) => t.status === "waiting")
+    .slice()
+    .sort((a, b) => {
+      const ap = a.preferential ? 1 : 0;
+      const bp = b.preferential ? 1 : 0;
+      if (bp !== ap) return bp - ap;
+      return (a.created_at ?? "").localeCompare(b.created_at ?? "") || a.code.localeCompare(b.code);
+    });
+  // Preferentes primero; mostrar los próximos en cola
+  const upcoming = waiting.slice(0, 23);
+  const moreWaiting = Math.max(0, waiting.length - upcoming.length);
   // Firma estable: evita re-ejecutar el anuncio en cada tick del reloj
   const callingSignature = calling
     .map((t) => `${t.id}:${t.called_at ?? ""}`)
@@ -480,7 +491,11 @@ function DisplayPage() {
                     key={t.id}
                     className="rounded-lg border border-white/15 bg-white/10 px-3 py-1.5"
                   >
-                    <span className="font-ticket text-2xl font-bold leading-none md:text-3xl"><TicketCodeView code={t.code} /></span>
+                    <span className={`font-ticket text-2xl font-bold leading-none md:text-3xl ${
+                      t.preferential ? "text-sky-300" : "text-white"
+                    }`}>
+                      <TicketCodeView code={t.code} />
+                    </span>
                   </li>
                 ))}
                 {moreWaiting > 0 && (
@@ -532,9 +547,11 @@ function DisplayPage() {
                     }`}
                   >
                     <span
-                      className={`whitespace-nowrap font-ticket font-black leading-none text-amber-300 drop-shadow-[0_0_14px_rgba(251,191,36,0.55)] ${attendingScale.code} ${
-                        isAnimating ? "animate-tv-call-code-burst" : ""
-                      }`}
+                      className={`whitespace-nowrap font-ticket font-black leading-none ${attendingScale.code} ${
+                        t.preferential
+                          ? "text-sky-300 drop-shadow-[0_0_14px_rgba(125,211,252,0.45)]"
+                          : "text-amber-300 drop-shadow-[0_0_14px_rgba(251,191,36,0.55)]"
+                      } ${isAnimating ? "animate-tv-call-code-burst" : ""}`}
                     >
                       <TicketCodeView code={t.code} />
                     </span>

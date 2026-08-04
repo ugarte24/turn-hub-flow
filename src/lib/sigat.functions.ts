@@ -99,10 +99,11 @@ export const findActiveTicketByDevice = createServerFn({ method: "POST" }).handl
 // ---------- HOST (Personal de apoyo): generate tickets on behalf of citizens ----------
 export const generateTicketAsStaff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { areaId: string; procedureId: string }) =>
+  .inputValidator((d: { areaId: string; procedureId: string; preferential?: boolean }) =>
     z.object({
       areaId: z.string().uuid(),
       procedureId: z.string().uuid(),
+      preferential: z.boolean().optional(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -123,6 +124,14 @@ export const generateTicketAsStaff = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     const ticket = (Array.isArray(row) ? row[0] : row) as { id?: string } | null;
     if (!ticket?.id) return row;
+
+    if (data.preferential) {
+      const { error: prefErr } = await supabase
+        .from("tickets")
+        .update({ preferential: true } as never)
+        .eq("id", ticket.id);
+      if (prefErr) throw new Error(prefErr.message);
+    }
 
     const { data: full, error: fetchError } = await supabase
       .from("tickets")
@@ -274,6 +283,7 @@ export const callNextTicket = createServerFn({ method: "POST" })
         .eq("day", today)
         .eq("transfer_to", "origin")
         .eq("origin_service_point_id", data.servicePointId)
+        .order("preferential", { ascending: false })
         .order("created_at", { ascending: true })
         .limit(1)
         .maybeSingle();
@@ -288,6 +298,7 @@ export const callNextTicket = createServerFn({ method: "POST" })
         .eq("status", "waiting")
         .eq("day", today)
         .eq("transfer_to", "ruat")
+        .order("preferential", { ascending: false })
         .order("created_at", { ascending: true })
         .limit(1)
         .maybeSingle();
@@ -302,6 +313,7 @@ export const callNextTicket = createServerFn({ method: "POST" })
         .eq("status", "waiting")
         .eq("day", today)
         .eq("transfer_to", "counter")
+        .order("preferential", { ascending: false })
         .order("created_at", { ascending: true })
         .limit(1)
         .maybeSingle();
@@ -316,6 +328,7 @@ export const callNextTicket = createServerFn({ method: "POST" })
         .eq("status", "waiting")
         .eq("day", today)
         .eq("transfer_to", "cashier")
+        .order("preferential", { ascending: false })
         .order("created_at", { ascending: true })
         .limit(1)
         .maybeSingle();
@@ -335,6 +348,7 @@ export const callNextTicket = createServerFn({ method: "POST" })
         .eq("day", today)
         .in("procedure_id", procIds)
         .is("transfer_to", null)
+        .order("preferential", { ascending: false })
         .order("created_at", { ascending: true })
         .limit(1)
         .maybeSingle();

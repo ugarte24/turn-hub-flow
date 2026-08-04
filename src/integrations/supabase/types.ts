@@ -249,6 +249,7 @@ export type Database = {
           operator_id: string | null
           origin_operator_id: string | null
           origin_service_point_id: string | null
+          preferential: boolean
           procedure_id: string
           service_point_id: string | null
           started_at: string | null
@@ -270,6 +271,7 @@ export type Database = {
           operator_id?: string | null
           origin_operator_id?: string | null
           origin_service_point_id?: string | null
+          preferential?: boolean
           procedure_id: string
           service_point_id?: string | null
           started_at?: string | null
@@ -291,6 +293,7 @@ export type Database = {
           operator_id?: string | null
           origin_operator_id?: string | null
           origin_service_point_id?: string | null
+          preferential?: boolean
           procedure_id?: string
           service_point_id?: string | null
           started_at?: string | null

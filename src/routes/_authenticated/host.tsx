@@ -17,6 +17,7 @@ export const Route = createFileRoute("/_authenticated/host")({
 
 type GeneratedTicket = {
   id: string; code: string; ci?: string; created_at?: string;
+  preferential?: boolean;
   area?: Area | null; procedure?: Procedure | null;
 };
 
@@ -235,6 +236,7 @@ function HostForm({ userId }: { userId: string }) {
   const genFn = useServerFn(generateTicketAsStaff);
   const [areaId, setAreaId] = useState<string | null>(null);
   const [procedureId, setProcedureId] = useState<string | null>(null);
+  const [preferential, setPreferential] = useState(false);
   const [lastTicket, setLastTicket] = useState<GeneratedTicket | null>(null);
 
   const areas = useQuery({ queryKey: ["areas"], queryFn: fetchAreas });
@@ -263,7 +265,9 @@ function HostForm({ userId }: { userId: string }) {
   const recent = recentQ.data ?? [];
 
   const generate = useMutation({
-    mutationFn: async () => genFn({ data: { areaId: areaId!, procedureId: procedureId! } }),
+    mutationFn: async () => genFn({
+      data: { areaId: areaId!, procedureId: procedureId!, preferential },
+    }),
     onSuccess: (data) => {
       const row = data as GeneratedTicket;
       const full: GeneratedTicket = {
@@ -273,6 +277,7 @@ function HostForm({ userId }: { userId: string }) {
       };
       setLastTicket(full);
       setProcedureId(null);
+      setPreferential(false);
       void qc.invalidateQueries({ queryKey: ["host_recent_tickets"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -328,6 +333,21 @@ function HostForm({ userId }: { userId: string }) {
               </div>
             </>
           )}
+
+          <label className="mt-5 flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-border bg-background px-4 py-3">
+            <input
+              type="checkbox"
+              checked={preferential}
+              onChange={(e) => setPreferential(e.target.checked)}
+              className="h-4 w-4 accent-primary"
+            />
+            <span className="text-sm font-medium">
+              Prioridad
+              <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                Tercera edad, discapacidad u otra prioridad
+              </span>
+            </span>
+          </label>
 
           <button
             type="button"
