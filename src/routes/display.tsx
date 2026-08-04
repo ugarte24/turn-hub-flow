@@ -557,7 +557,9 @@ function DisplayPage() {
                     </span>
                     <span className="flex items-center justify-center">
                       <ArrowRight
-                        className={`${attendingScale.arrow} text-amber-300/90`}
+                        className={`${attendingScale.arrow} ${
+                          t.preferential ? "text-sky-300/90" : "text-amber-300/90"
+                        }`}
                         strokeWidth={3}
                         aria-hidden
                       />
