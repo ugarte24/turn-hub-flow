@@ -196,21 +196,6 @@ function waitSpeechIdle(maxMs = 15_000): Promise<void> {
   });
 }
 
-/** Español de América Latina. Evita es-ES (España). */
-function pickLatinAmericanSpanishVoice(): SpeechSynthesisVoice | null {
-  if (typeof window === "undefined" || !window.speechSynthesis) return null;
-  const voices = window.speechSynthesis.getVoices();
-  const prefer = ["es-MX", "es-US", "es-419", "es-AR", "es-CO", "es-CL", "es-PE", "es-BO", "es-VE"];
-  for (const code of prefer) {
-    const found = voices.find((v) => v.lang.replace("_", "-").toLowerCase().startsWith(code.toLowerCase()));
-    if (found) return found;
-  }
-  return voices.find((v) => {
-    const lang = v.lang.replace("_", "-").toLowerCase();
-    return lang.startsWith("es") && !lang.startsWith("es-es");
-  }) ?? null;
-}
-
 function speakOnce(text: string): Promise<void> {
   return new Promise((resolve) => {
     try {
@@ -233,9 +218,8 @@ function speakOnce(text: string): Promise<void> {
       }
 
       const msg = new SpeechSynthesisUtterance(text);
-      const voice = pickLatinAmericanSpanishVoice();
-      msg.lang = voice?.lang || "es-MX";
-      if (voice) msg.voice = voice;
+      // Solo lang: asignar voice distinto al lang duplica el audio en Chrome/Edge Windows
+      msg.lang = "es-ES";
       msg.rate = 0.9;
       msg.volume = 1;
       msg.pitch = 1;
