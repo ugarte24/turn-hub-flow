@@ -187,9 +187,64 @@ export function speakTvUtterance(text: string, settings: TvVoiceSettings): Promi
 export function groupSpeechVoices(voices: SpeechSynthesisVoice[]) {
   const byName = (a: SpeechSynthesisVoice, b: SpeechSynthesisVoice) =>
     a.name.localeCompare(b.name, "es", { sensitivity: "base" });
-  const spanish = voices.filter((v) => v.lang.toLowerCase().startsWith("es")).sort(byName);
-  const other = voices.filter((v) => !v.lang.toLowerCase().startsWith("es")).sort(byName);
-  return { spanish, other };
+  const spanish = voices.filter(isSpanishVoice);
+  const latinAmerica = spanish.filter(isLatinAmericanSpanish).sort(byName);
+  const spain = spanish.filter((v) => !isLatinAmericanSpanish(v)).sort(byName);
+  return { spain, latinAmerica };
+}
+
+function normalizeVoiceLang(lang: string): string {
+  return lang.trim().toLowerCase().replace(/_/g, "-");
+}
+
+function isSpanishVoice(voice: SpeechSynthesisVoice): boolean {
+  const lang = normalizeVoiceLang(voice.lang);
+  return lang === "es" || lang.startsWith("es-");
+}
+
+function isLatinAmericanSpanish(voice: SpeechSynthesisVoice): boolean {
+  if (!isSpanishVoice(voice)) return false;
+  const lang = normalizeVoiceLang(voice.lang);
+  if (lang === "es-es") return false;
+  if (lang.startsWith("es-") && lang !== "es-es") return true;
+  return LATIN_AMERICA_NAME.test(voice.name);
+}
+
+const LATIN_AMERICA_NAME =
+  /mexico|méxico|mexican|latina|latino|am[eé]rica|argentina|colombia|chile|peru|perú|venezuela|bolivia|ecuador|uruguay|paraguay|costa rica|panam[aá]|guatemala|honduras|nicaragua|salvador|dominicana|cuba|puerto rico|estados unidos|united states|sabina|raul|raúl|dalia/i;
+
+export function voiceOptionLabel(voice: SpeechSynthesisVoice): string {
+  return `${voice.name} (${spanishVoiceRegion(voice)})`;
+}
+
+function spanishVoiceRegion(voice: SpeechSynthesisVoice): string {
+  const lang = normalizeVoiceLang(voice.lang);
+  const regions: Record<string, string> = {
+    "es-es": "España",
+    "es-mx": "México",
+    "es-us": "Latinoamérica",
+    "es-419": "Latinoamérica",
+    "es-ar": "Argentina",
+    "es-bo": "Bolivia",
+    "es-cl": "Chile",
+    "es-co": "Colombia",
+    "es-cr": "Costa Rica",
+    "es-cu": "Cuba",
+    "es-do": "República Dominicana",
+    "es-ec": "Ecuador",
+    "es-gt": "Guatemala",
+    "es-hn": "Honduras",
+    "es-ni": "Nicaragua",
+    "es-pa": "Panamá",
+    "es-pe": "Perú",
+    "es-pr": "Puerto Rico",
+    "es-py": "Paraguay",
+    "es-sv": "El Salvador",
+    "es-uy": "Uruguay",
+    "es-ve": "Venezuela",
+  };
+  if (regions[lang]) return regions[lang];
+  return isLatinAmericanSpanish(voice) ? "Latinoamérica" : "España";
 }
 
 export function rateLabel(rate: number): string {
@@ -198,10 +253,6 @@ export function rateLabel(rate: number): string {
   if (rate <= 1.05) return "Normal";
   if (rate <= 1.25) return "Rápida";
   return "Muy rápida";
-}
-
-export function voiceOptionLabel(voice: SpeechSynthesisVoice): string {
-  return `${voice.name} (${voice.lang})`;
 }
 
 export const VOICE_PREVIEW_TEXT = "ve seis pasar a ventanilla uno";

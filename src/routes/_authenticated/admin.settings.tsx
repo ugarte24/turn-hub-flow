@@ -182,7 +182,7 @@ function SettingsPage() {
     }
   }
 
-  const { spanish: spanishVoices, other: otherVoices } = groupSpeechVoices(voices);
+  const { spain: spainVoices, latinAmerica: latinAmericaVoices } = groupSpeechVoices(voices);
 
   return (
     <div className="p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:p-10">
@@ -322,18 +322,18 @@ function SettingsPage() {
                       {voiceName || "Voz guardada"} (no está en este equipo)
                     </option>
                   )}
-                  {spanishVoices.length > 0 && (
-                    <optgroup label="Español">
-                      {spanishVoices.map((v) => (
+                  {spainVoices.length > 0 && (
+                    <optgroup label="Español (España)">
+                      {spainVoices.map((v) => (
                         <option key={v.voiceURI} value={v.voiceURI}>
                           {voiceOptionLabel(v)}
                         </option>
                       ))}
                     </optgroup>
                   )}
-                  {otherVoices.length > 0 && (
-                    <optgroup label="Otras voces">
-                      {otherVoices.map((v) => (
+                  {latinAmericaVoices.length > 0 && (
+                    <optgroup label="Español (América Latina)">
+                      {latinAmericaVoices.map((v) => (
                         <option key={v.voiceURI} value={v.voiceURI}>
                           {voiceOptionLabel(v)}
                         </option>
