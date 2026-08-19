@@ -64,7 +64,7 @@ function OperatorPage() {
   const [notifyPerm, setNotifyPerm] = useState<DesktopNotifyPermission>(() => getDesktopNotifyPermission());
 
   const sps = useQuery({ queryKey: ["service_points"], queryFn: fetchServicePoints });
-  const tickets = useQuery({ queryKey: ["today_tickets"], queryFn: fetchTodayTickets });
+  const tickets = useQuery({ queryKey: ["today_tickets"], queryFn: fetchTodayTickets, refetchInterval: 3000 });
 
   const callFn = useServerFn(callNextTicket);
   const upFn = useServerFn(updateTicketStatus);

@@ -344,16 +344,17 @@ function DisplayPage() {
     }
     loadTickets();
     loadSettings();
-    const channel = supabase
+    const ticketsChannel = supabase
       .channel("tv-tickets")
       .on("postgres_changes", { event: "*", schema: "public", table: "tickets" }, () => loadTickets())
-      .on("postgres_changes", { event: "*", schema: "public", table: "settings" }, () => loadSettings())
       .subscribe();
-    const poll = setInterval(loadSettings, 20000);
+    const pollTickets = setInterval(loadTickets, 2500);
+    const pollSettings = setInterval(loadSettings, 15000);
     return () => {
       mounted = false;
-      supabase.removeChannel(channel);
-      clearInterval(poll);
+      supabase.removeChannel(ticketsChannel);
+      clearInterval(pollTickets);
+      clearInterval(pollSettings);
     };
   }, []);
 

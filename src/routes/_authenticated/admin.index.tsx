@@ -18,7 +18,7 @@ type T = { id: string; status: string; procedure_id: string; service_point_id: s
 
 function AdminDashboard() {
   const qc = useQueryClient();
-  const tickets = useQuery({ queryKey: ["today_tickets"], queryFn: fetchTodayTickets });
+  const tickets = useQuery({ queryKey: ["today_tickets"], queryFn: fetchTodayTickets, refetchInterval: 5000 });
   const ratings = useQuery({ queryKey: ["today_ratings"], queryFn: fetchTodayRatings });
   const sps = useQuery({ queryKey: ["service_points"], queryFn: fetchServicePoints });
   const resetFn = useServerFn(resetDailyCounters);
