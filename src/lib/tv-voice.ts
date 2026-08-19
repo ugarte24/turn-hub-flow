@@ -16,17 +16,60 @@ export const VOICE_RATE_MIN = 0.6;
 export const VOICE_RATE_MAX = 1.5;
 export const VOICE_RATE_STEP = 0.05;
 
+export type SpanishVoiceLocale = {
+  lang: string;
+  label: string;
+  group: "europa" | "latinoamerica";
+};
+
+/** Lista fija: igual en celular y computadora. */
+export const SPANISH_VOICE_CATALOG: SpanishVoiceLocale[] = [
+  { lang: "es-ES", label: "España", group: "europa" },
+  { lang: "es-MX", label: "México", group: "latinoamerica" },
+  { lang: "es-AR", label: "Argentina", group: "latinoamerica" },
+  { lang: "es-BO", label: "Bolivia", group: "latinoamerica" },
+  { lang: "es-CL", label: "Chile", group: "latinoamerica" },
+  { lang: "es-CO", label: "Colombia", group: "latinoamerica" },
+  { lang: "es-CR", label: "Costa Rica", group: "latinoamerica" },
+  { lang: "es-CU", label: "Cuba", group: "latinoamerica" },
+  { lang: "es-DO", label: "República Dominicana", group: "latinoamerica" },
+  { lang: "es-EC", label: "Ecuador", group: "latinoamerica" },
+  { lang: "es-GT", label: "Guatemala", group: "latinoamerica" },
+  { lang: "es-HN", label: "Honduras", group: "latinoamerica" },
+  { lang: "es-NI", label: "Nicaragua", group: "latinoamerica" },
+  { lang: "es-PA", label: "Panamá", group: "latinoamerica" },
+  { lang: "es-PE", label: "Perú", group: "latinoamerica" },
+  { lang: "es-PR", label: "Puerto Rico", group: "latinoamerica" },
+  { lang: "es-PY", label: "Paraguay", group: "latinoamerica" },
+  { lang: "es-SV", label: "El Salvador", group: "latinoamerica" },
+  { lang: "es-US", label: "Estados Unidos", group: "latinoamerica" },
+  { lang: "es-UY", label: "Uruguay", group: "latinoamerica" },
+  { lang: "es-VE", label: "Venezuela", group: "latinoamerica" },
+];
+
 export function parseTvVoiceSettings(sound: Record<string, unknown> | undefined): TvVoiceSettings {
   const rateRaw = Number(sound?.rate);
   const rate = Number.isFinite(rateRaw)
     ? Math.min(VOICE_RATE_MAX, Math.max(VOICE_RATE_MIN, rateRaw))
     : DEFAULT_TV_VOICE.rate;
+  const rawLang = typeof sound?.voiceLang === "string" ? sound.voiceLang : "";
+  const voiceLang = catalogLang(rawLang) || DEFAULT_TV_VOICE.voiceLang;
   return {
-    voiceURI: typeof sound?.voiceURI === "string" ? sound.voiceURI : "",
-    voiceName: typeof sound?.voiceName === "string" ? sound.voiceName : "",
-    voiceLang: typeof sound?.voiceLang === "string" && sound.voiceLang ? sound.voiceLang : DEFAULT_TV_VOICE.voiceLang,
+    voiceURI: "",
+    voiceName: "",
+    voiceLang,
     rate,
   };
+}
+
+function catalogLang(lang: string): string {
+  const n = normalizeVoiceLang(lang);
+  if (!n) return "";
+  const exact = SPANISH_VOICE_CATALOG.find((c) => normalizeVoiceLang(c.lang) === n);
+  if (exact) return exact.lang;
+  if (n === "es" || n.startsWith("es-es")) return "es-ES";
+  if (n.startsWith("es-")) return "es-MX";
+  return "";
 }
 
 export function listSpeechVoices(): SpeechSynthesisVoice[] {
@@ -68,34 +111,40 @@ export function subscribeSpeechVoices(onChange: (voices: SpeechSynthesisVoice[])
   };
 }
 
-export function findSpeechVoice(settings: TvVoiceSettings): SpeechSynthesisVoice | null {
-  const voices = listSpeechVoices();
-  if (!voices.length) return null;
-  if (settings.voiceURI) {
-    const byUri = voices.find((v) => v.voiceURI === settings.voiceURI);
-    if (byUri) return byUri;
-  }
-  if (settings.voiceName) {
-    const wanted = settings.voiceName.toLowerCase();
-    const byName = voices.find((v) => v.name.toLowerCase() === wanted);
-    if (byName) return byName;
-  }
-  const lang = (settings.voiceLang || DEFAULT_TV_VOICE.voiceLang).toLowerCase();
-  const exact = voices.find((v) => v.lang.toLowerCase() === lang);
-  if (exact) return exact;
-  const prefix = lang.split("-")[0];
-  return voices.find((v) => v.lang.toLowerCase().startsWith(prefix)) ?? null;
+function localeFallbackChain(lang: string): string[] {
+  const wanted = normalizeVoiceLang(lang) || "es-es";
+  const latam = [
+    "es-mx", "es-us", "es-419", "es-ar", "es-co", "es-cl", "es-pe", "es-bo",
+    "es-ve", "es-ec", "es-uy", "es-py", "es-cr", "es-pa", "es-gt", "es-hn",
+    "es-ni", "es-sv", "es-do", "es-cu", "es-pr",
+  ];
+  const chain = wanted === "es-es"
+    ? ["es-es", "es"]
+    : [wanted, ...latam.filter((x) => x !== wanted), "es", "es-es"];
+  return [...new Set(chain)];
 }
 
-/** Aplica voz y velocidad. En Chrome/Edge no mezclar voice + lang distinto: silencia o duplica. */
+export function findSpeechVoice(settings: TvVoiceSettings): SpeechSynthesisVoice | null {
+  const voices = listSpeechVoices().filter(isSpanishVoice);
+  if (!voices.length) return listSpeechVoices()[0] ?? null;
+  for (const lang of localeFallbackChain(settings.voiceLang || DEFAULT_TV_VOICE.voiceLang)) {
+    const match = voices.find((v) => normalizeVoiceLang(v.lang) === lang);
+    if (match) return match;
+    const prefix = voices.find((v) => normalizeVoiceLang(v.lang).startsWith(lang));
+    if (prefix) return prefix;
+  }
+  return voices[0] ?? null;
+}
+
+/** Aplica voz y velocidad. Si hay voz del país, se usa; si no, el español más cercano. */
 export function applyVoiceToUtterance(msg: SpeechSynthesisUtterance, settings: TvVoiceSettings, allowVoice = true) {
-  const wantsSpecific = allowVoice && Boolean(settings.voiceURI || settings.voiceName);
-  const voice = wantsSpecific ? findSpeechVoice(settings) : null;
+  const lang = settings.voiceLang || DEFAULT_TV_VOICE.voiceLang;
+  const voice = allowVoice ? findSpeechVoice(settings) : null;
   if (voice) {
     msg.voice = voice;
     msg.lang = voice.lang;
   } else {
-    msg.lang = settings.voiceLang || DEFAULT_TV_VOICE.voiceLang;
+    msg.lang = lang;
   }
   msg.rate = settings.rate;
   msg.volume = 1;

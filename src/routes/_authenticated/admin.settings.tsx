@@ -6,16 +6,14 @@ import { toast } from "sonner";
 import { Save, Info, Upload, Film, Download, Copy, QrCode, Volume2 } from "lucide-react";
 import {
   DEFAULT_TV_VOICE,
-  groupSpeechVoices,
   parseTvVoiceSettings,
   rateLabel,
+  SPANISH_VOICE_CATALOG,
   speakTvUtterance,
-  subscribeSpeechVoices,
   VOICE_PREVIEW_TEXT,
   VOICE_RATE_MAX,
   VOICE_RATE_MIN,
   VOICE_RATE_STEP,
-  voiceOptionLabel,
 } from "@/lib/tv-voice";
 
 export const Route = createFileRoute("/_authenticated/admin/settings")({
@@ -38,11 +36,8 @@ function SettingsPage() {
   const [subtitle, setSubtitle] = useState("Sistema Integral de Gestión de Atención por Turnos");
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const [voiceURI, setVoiceURI] = useState("");
-  const [voiceName, setVoiceName] = useState("");
   const [voiceLang, setVoiceLang] = useState(DEFAULT_TV_VOICE.voiceLang);
   const [voiceRate, setVoiceRate] = useState(DEFAULT_TV_VOICE.rate);
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [videoEnabled, setVideoEnabled] = useState(false);
   const [videoSource, setVideoSource] = useState<VideoSource>("file");
   const [videoUrl, setVideoUrl] = useState("");
@@ -56,8 +51,6 @@ function SettingsPage() {
       .then(setQrDataUrl)
       .catch(() => toast.error("No se pudo generar el QR"));
   }, []);
-
-  useEffect(() => subscribeSpeechVoices(setVoices), []);
 
   useEffect(() => {
     supabase.from("settings").select("*").then(({ data }) => {
@@ -83,8 +76,6 @@ function SettingsPage() {
       if (typeof sound?.enabled === "boolean") setSoundEnabled(sound.enabled as boolean);
       if (typeof sound?.voice === "boolean") setVoiceEnabled(sound.voice as boolean);
       const parsed = parseTvVoiceSettings(sound);
-      setVoiceURI(parsed.voiceURI);
-      setVoiceName(parsed.voiceName);
       setVoiceLang(parsed.voiceLang);
       setVoiceRate(parsed.rate);
     });
@@ -143,8 +134,8 @@ function SettingsPage() {
         value: {
           enabled: soundEnabled,
           voice: voiceEnabled,
-          voiceURI,
-          voiceName,
+          voiceURI: "",
+          voiceName: "",
           voiceLang,
           rate: voiceRate,
         },
@@ -182,7 +173,8 @@ function SettingsPage() {
     }
   }
 
-  const { spain: spainVoices, latinAmerica: latinAmericaVoices } = groupSpeechVoices(voices);
+  const europeVoices = SPANISH_VOICE_CATALOG.filter((v) => v.group === "europa");
+  const latinVoices = SPANISH_VOICE_CATALOG.filter((v) => v.group === "latinoamerica");
 
   return (
     <div className="p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:p-10">
@@ -298,48 +290,26 @@ function SettingsPage() {
           </label>
           {voiceEnabled && (
             <>
-              <Field label="Voz">
+              <Field label="Acento / país">
                 <select
-                  value={voiceURI}
-                  onChange={(e) => {
-                    const uri = e.target.value;
-                    if (!uri) {
-                      setVoiceURI("");
-                      setVoiceName("");
-                      setVoiceLang(DEFAULT_TV_VOICE.voiceLang);
-                      return;
-                    }
-                    const picked = voices.find((v) => v.voiceURI === uri);
-                    setVoiceURI(uri);
-                    setVoiceName(picked?.name ?? voiceName);
-                    setVoiceLang(picked?.lang ?? voiceLang);
-                  }}
+                  value={voiceLang}
+                  onChange={(e) => setVoiceLang(e.target.value || DEFAULT_TV_VOICE.voiceLang)}
                   className="input"
                 >
-                  <option value="">Automática (español)</option>
-                  {voiceURI && !voices.some((v) => v.voiceURI === voiceURI) && (
-                    <option value={voiceURI}>
-                      {voiceName || "Voz guardada"} (no está en este equipo)
-                    </option>
-                  )}
-                  {spainVoices.length > 0 && (
-                    <optgroup label="Español (España)">
-                      {spainVoices.map((v) => (
-                        <option key={v.voiceURI} value={v.voiceURI}>
-                          {voiceOptionLabel(v)}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {latinAmericaVoices.length > 0 && (
-                    <optgroup label="Español (América Latina)">
-                      {latinAmericaVoices.map((v) => (
-                        <option key={v.voiceURI} value={v.voiceURI}>
-                          {voiceOptionLabel(v)}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
+                  <optgroup label="España">
+                    {europeVoices.map((v) => (
+                      <option key={v.lang} value={v.lang}>
+                        {v.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="América Latina">
+                    {latinVoices.map((v) => (
+                      <option key={v.lang} value={v.lang}>
+                        {v.label}
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
               </Field>
               <Field label={`Velocidad: ${rateLabel(voiceRate)} (${voiceRate.toFixed(2)}×)`}>
@@ -361,8 +331,8 @@ function SettingsPage() {
                 type="button"
                 onClick={() => {
                   void speakTvUtterance(VOICE_PREVIEW_TEXT, {
-                    voiceURI,
-                    voiceName,
+                    voiceURI: "",
+                    voiceName: "",
                     voiceLang,
                     rate: voiceRate,
                   }).catch(() => toast.error("No se pudo reproducir la prueba"));
@@ -375,7 +345,7 @@ function SettingsPage() {
           )}
           <p className="mt-3 flex items-start gap-2 rounded-lg bg-accent/50 p-3 text-xs text-muted-foreground">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            Las voces las instala el navegador o Windows de cada equipo. Para oír exactamente la misma en la TV, abrí Configuración en esa computadora, elegí la voz y guardá.
+            La lista de países es la misma en celular y computadora. El acento real depende de las voces instaladas en la TV: si no hay voz de ese país, se usa la más cercana (México o España).
           </p>
         </Card>
 
