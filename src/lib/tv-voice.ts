@@ -87,11 +87,11 @@ export function findSpeechVoice(settings: TvVoiceSettings): SpeechSynthesisVoice
   return voices.find((v) => v.lang.toLowerCase().startsWith(prefix)) ?? null;
 }
 
-/** Aplica voz y velocidad. Si hay voz concreta, lang = voice.lang (evita audio duplicado en Chrome). */
-export function applyVoiceToUtterance(msg: SpeechSynthesisUtterance, settings: TvVoiceSettings) {
-  const wantsSpecific = Boolean(settings.voiceURI || settings.voiceName);
-  const voice = findSpeechVoice(settings);
-  if (wantsSpecific && voice) {
+/** Aplica voz y velocidad. En Chrome/Edge no mezclar voice + lang distinto: silencia o duplica. */
+export function applyVoiceToUtterance(msg: SpeechSynthesisUtterance, settings: TvVoiceSettings, allowVoice = true) {
+  const wantsSpecific = allowVoice && Boolean(settings.voiceURI || settings.voiceName);
+  const voice = wantsSpecific ? findSpeechVoice(settings) : null;
+  if (voice) {
     msg.voice = voice;
     msg.lang = voice.lang;
   } else {
@@ -100,6 +100,88 @@ export function applyVoiceToUtterance(msg: SpeechSynthesisUtterance, settings: T
   msg.rate = settings.rate;
   msg.volume = 1;
   msg.pitch = 1;
+}
+
+function resumeSpeechSynthesis(synth: SpeechSynthesis) {
+  try {
+    if (synth.paused) synth.resume();
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Chrome/Edge: cancelar y hablar en el mismo tick suele tragarse el audio. */
+export function speakTvUtterance(text: string, settings: TvVoiceSettings): Promise<void> {
+  return new Promise((resolve) => {
+    try {
+      if (typeof window === "undefined" || !window.speechSynthesis) {
+        resolve();
+        return;
+      }
+      const synth = window.speechSynthesis;
+      resumeSpeechSynthesis(synth);
+
+      let settled = false;
+      let started = false;
+      let triedFallback = false;
+      const timers: number[] = [];
+
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        for (const id of timers) window.clearTimeout(id);
+        resolve();
+      };
+
+      const run = (allowVoice: boolean) => {
+        if (settled) return;
+        resumeSpeechSynthesis(synth);
+        const msg = new SpeechSynthesisUtterance(text);
+        applyVoiceToUtterance(msg, settings, allowVoice);
+        msg.onstart = () => {
+          started = true;
+        };
+        msg.onend = done;
+        msg.onerror = () => {
+          if (!started && allowVoice && !triedFallback) {
+            triedFallback = true;
+            run(false);
+            return;
+          }
+          done();
+        };
+        synth.speak(msg);
+      };
+
+      try {
+        synth.cancel();
+      } catch {
+        /* ignore */
+      }
+
+      timers.push(
+        window.setTimeout(() => {
+          run(true);
+          timers.push(
+            window.setTimeout(() => {
+              if (settled || started) return;
+              triedFallback = true;
+              try {
+                synth.cancel();
+              } catch {
+                /* ignore */
+              }
+              timers.push(window.setTimeout(() => run(false), 50));
+            }, 800),
+          );
+        }, 60),
+      );
+
+      timers.push(window.setTimeout(done, 12_000));
+    } catch {
+      resolve();
+    }
+  });
 }
 
 export function groupSpeechVoices(voices: SpeechSynthesisVoice[]) {

@@ -5,11 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Save, Info, Upload, Film, Download, Copy, QrCode, Volume2 } from "lucide-react";
 import {
-  applyVoiceToUtterance,
   DEFAULT_TV_VOICE,
   groupSpeechVoices,
   parseTvVoiceSettings,
   rateLabel,
+  speakTvUtterance,
   subscribeSpeechVoices,
   VOICE_PREVIEW_TEXT,
   VOICE_RATE_MAX,
@@ -360,18 +360,12 @@ function SettingsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  try {
-                    if (!window.speechSynthesis) {
-                      toast.error("Este navegador no tiene voces");
-                      return;
-                    }
-                    window.speechSynthesis.cancel();
-                    const msg = new SpeechSynthesisUtterance(VOICE_PREVIEW_TEXT);
-                    applyVoiceToUtterance(msg, { voiceURI, voiceName, voiceLang, rate: voiceRate });
-                    window.speechSynthesis.speak(msg);
-                  } catch {
-                    toast.error("No se pudo reproducir la prueba");
-                  }
+                  void speakTvUtterance(VOICE_PREVIEW_TEXT, {
+                    voiceURI,
+                    voiceName,
+                    voiceLang,
+                    rate: voiceRate,
+                  }).catch(() => toast.error("No se pudo reproducir la prueba"));
                 }}
                 className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-accent sm:w-auto"
               >

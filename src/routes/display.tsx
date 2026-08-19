@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchTodayTickets } from "@/lib/sigat-queries";
 import { speakTicketCode, TicketCodeView } from "@/lib/ticket-code";
-import { applyVoiceToUtterance, DEFAULT_TV_VOICE, parseTvVoiceSettings, waitForSpeechVoices, type TvVoiceSettings } from "@/lib/tv-voice";
+import { speakTvUtterance, DEFAULT_TV_VOICE, parseTvVoiceSettings, waitForSpeechVoices, type TvVoiceSettings } from "@/lib/tv-voice";
 import { Volume2, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/display")({
@@ -180,13 +180,18 @@ function setHighlightingCallId(id: string | null) {
   for (const fn of highlightListeners) fn(id);
 }
 
-function waitSpeechIdle(maxMs = 15_000): Promise<void> {
+function waitSpeechIdle(maxMs = 2_500): Promise<void> {
   return new Promise((resolve) => {
     const started = Date.now();
     const tick = () => {
       try {
-        const busy = speechSynthesis.speaking || speechSynthesis.pending;
+        const synth = window.speechSynthesis;
+        if (synth.paused) synth.resume();
+        const busy = synth.speaking || synth.pending;
         if (!busy || Date.now() - started > maxMs) {
+          if (busy && !speakInFlight) {
+            try { synth.cancel(); } catch { /* ignore */ }
+          }
           resolve();
           return;
         }
@@ -202,54 +207,15 @@ function waitSpeechIdle(maxMs = 15_000): Promise<void> {
 
 function speakOnce(text: string): Promise<void> {
   return new Promise((resolve) => {
-    try {
-      if (typeof window === "undefined" || !window.speechSynthesis) {
-        resolve();
-        return;
-      }
-
-      if (speakInFlight) {
-        resolve();
-        return;
-      }
-
-      speakInFlight = true;
-
-      const synth = window.speechSynthesis;
-      // Vaciar cola residual del motor (sin cancelar a mitad de esta frase)
-      if (synth.pending && !synth.speaking) {
-        try { synth.cancel(); } catch { /* ignore */ }
-      }
-
-      const msg = new SpeechSynthesisUtterance(text);
-      applyVoiceToUtterance(msg, tvVoiceConfig);
-
-      let settled = false;
-      let started = false;
-      const done = () => {
-        if (settled) return;
-        settled = true;
-        speakInFlight = false;
-        resolve();
-      };
-      msg.onstart = () => {
-        // Si el motor dispara un segundo start de la misma utterance, cortar
-        if (started) {
-          try { synth.cancel(); } catch { /* ignore */ }
-          done();
-          return;
-        }
-        started = true;
-      };
-      msg.onend = done;
-      msg.onerror = done;
-
-      synth.speak(msg);
-      window.setTimeout(done, 10_000);
-    } catch {
+    if (speakInFlight) {
+      resolve();
+      return;
+    }
+    speakInFlight = true;
+    void speakTvUtterance(text, tvVoiceConfig).finally(() => {
       speakInFlight = false;
       resolve();
-    }
+    });
   });
 }
 
@@ -334,9 +300,16 @@ function DisplayPage() {
     };
     window.addEventListener("pointerdown", unlock, { passive: true });
     window.addEventListener("keydown", unlock);
+    const keepAlive = window.setInterval(() => {
+      try {
+        const synth = window.speechSynthesis;
+        if (synth.paused) synth.resume();
+      } catch { /* ignore */ }
+    }, 8000);
     return () => {
       window.removeEventListener("pointerdown", unlock);
       window.removeEventListener("keydown", unlock);
+      window.clearInterval(keepAlive);
     };
   }, []);
 
@@ -423,14 +396,17 @@ function DisplayPage() {
   useEffect(() => {
     if (!tv.voiceEnabled || !ticketsReady) return;
 
-    // Primera carga tras recargar: no re-anunciar ni parpadear turnos ya en pantalla
+    // Primera carga: no re-anunciar turnos viejos, sí los llamados hace un instante
     if (!announceSeededRef.current) {
+      const nowMs = Date.now();
       for (const t of calling) {
-        if (t.called_at) announcedCallKeys.add(callAnnounceKey(t.id, t.called_at));
+        if (!t.called_at) continue;
+        const age = nowMs - new Date(t.called_at).getTime();
+        if (Number.isFinite(age) && age > 2500) {
+          announcedCallKeys.add(callAnnounceKey(t.id, t.called_at));
+        }
       }
       announceSeededRef.current = true;
-      setHighlightingCallId(null);
-      return;
     }
 
     const fresh = calling
