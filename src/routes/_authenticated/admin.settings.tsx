@@ -3,7 +3,20 @@ import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Save, Info, Upload, Film, Download, Copy, QrCode } from "lucide-react";
+import { Save, Info, Upload, Film, Download, Copy, QrCode, Volume2 } from "lucide-react";
+import {
+  applyVoiceToUtterance,
+  DEFAULT_TV_VOICE,
+  groupSpeechVoices,
+  parseTvVoiceSettings,
+  rateLabel,
+  subscribeSpeechVoices,
+  VOICE_PREVIEW_TEXT,
+  VOICE_RATE_MAX,
+  VOICE_RATE_MIN,
+  VOICE_RATE_STEP,
+  voiceOptionLabel,
+} from "@/lib/tv-voice";
 
 export const Route = createFileRoute("/_authenticated/admin/settings")({
   head: () => ({ meta: [{ title: "Configuración — SIGAT" }] }),
@@ -25,6 +38,11 @@ function SettingsPage() {
   const [subtitle, setSubtitle] = useState("Sistema Integral de Gestión de Atención por Turnos");
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [voiceURI, setVoiceURI] = useState("");
+  const [voiceName, setVoiceName] = useState("");
+  const [voiceLang, setVoiceLang] = useState(DEFAULT_TV_VOICE.voiceLang);
+  const [voiceRate, setVoiceRate] = useState(DEFAULT_TV_VOICE.rate);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [videoEnabled, setVideoEnabled] = useState(false);
   const [videoSource, setVideoSource] = useState<VideoSource>("file");
   const [videoUrl, setVideoUrl] = useState("");
@@ -39,6 +57,8 @@ function SettingsPage() {
       .catch(() => toast.error("No se pudo generar el QR"));
   }, []);
 
+  useEffect(() => subscribeSpeechVoices(setVoices), []);
+
   useEffect(() => {
     supabase.from("settings").select("*").then(({ data }) => {
       const r = (data ?? []) as Row[];
@@ -51,7 +71,7 @@ function SettingsPage() {
         videoUrl?: string;
         videoFileName?: string;
       } | undefined;
-      const sound = r.find((x) => x.key === "sound")?.value as { enabled?: boolean; voice?: boolean } | undefined;
+      const sound = r.find((x) => x.key === "sound")?.value as Record<string, unknown> | undefined;
       if (hours?.start) setHoursStart(hours.start);
       if (hours?.end) setHoursEnd(hours.end);
       if (tv?.institution) setInstitution(tv.institution);
@@ -60,8 +80,13 @@ function SettingsPage() {
       if (tv?.videoSource) setVideoSource(tv.videoSource === "none" ? "file" : tv.videoSource);
       if (tv?.videoUrl) setVideoUrl(tv.videoUrl);
       if (tv?.videoFileName) setVideoFileName(tv.videoFileName);
-      if (typeof sound?.enabled === "boolean") setSoundEnabled(sound.enabled);
-      if (typeof sound?.voice === "boolean") setVoiceEnabled(sound.voice);
+      if (typeof sound?.enabled === "boolean") setSoundEnabled(sound.enabled as boolean);
+      if (typeof sound?.voice === "boolean") setVoiceEnabled(sound.voice as boolean);
+      const parsed = parseTvVoiceSettings(sound);
+      setVoiceURI(parsed.voiceURI);
+      setVoiceName(parsed.voiceName);
+      setVoiceLang(parsed.voiceLang);
+      setVoiceRate(parsed.rate);
     });
   }, []);
 
@@ -113,7 +138,17 @@ function SettingsPage() {
           videoFileName: videoFileName || null,
         },
       },
-      { key: "sound", value: { enabled: soundEnabled, voice: voiceEnabled } },
+      {
+        key: "sound",
+        value: {
+          enabled: soundEnabled,
+          voice: voiceEnabled,
+          voiceURI,
+          voiceName,
+          voiceLang,
+          rate: voiceRate,
+        },
+      },
     ];
     const { error } = await supabase.from("settings").upsert(updates);
     setLoading(false);
@@ -146,6 +181,8 @@ function SettingsPage() {
       toast.error("No se pudo copiar la URL");
     }
   }
+
+  const { spanish: spanishVoices, other: otherVoices } = groupSpeechVoices(voices);
 
   return (
     <div className="p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:p-10">
@@ -259,9 +296,92 @@ function SettingsPage() {
           <label className="mt-2 flex items-center gap-2 text-sm">
             <input type="checkbox" checked={voiceEnabled} onChange={(e) => setVoiceEnabled(e.target.checked)} /> Anunciar por voz
           </label>
+          {voiceEnabled && (
+            <>
+              <Field label="Voz">
+                <select
+                  value={voiceURI}
+                  onChange={(e) => {
+                    const uri = e.target.value;
+                    if (!uri) {
+                      setVoiceURI("");
+                      setVoiceName("");
+                      setVoiceLang(DEFAULT_TV_VOICE.voiceLang);
+                      return;
+                    }
+                    const picked = voices.find((v) => v.voiceURI === uri);
+                    setVoiceURI(uri);
+                    setVoiceName(picked?.name ?? voiceName);
+                    setVoiceLang(picked?.lang ?? voiceLang);
+                  }}
+                  className="input"
+                >
+                  <option value="">Automática (español)</option>
+                  {voiceURI && !voices.some((v) => v.voiceURI === voiceURI) && (
+                    <option value={voiceURI}>
+                      {voiceName || "Voz guardada"} (no está en este equipo)
+                    </option>
+                  )}
+                  {spanishVoices.length > 0 && (
+                    <optgroup label="Español">
+                      {spanishVoices.map((v) => (
+                        <option key={v.voiceURI} value={v.voiceURI}>
+                          {voiceOptionLabel(v)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {otherVoices.length > 0 && (
+                    <optgroup label="Otras voces">
+                      {otherVoices.map((v) => (
+                        <option key={v.voiceURI} value={v.voiceURI}>
+                          {voiceOptionLabel(v)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+              </Field>
+              <Field label={`Velocidad: ${rateLabel(voiceRate)} (${voiceRate.toFixed(2)}×)`}>
+                <input
+                  type="range"
+                  min={VOICE_RATE_MIN}
+                  max={VOICE_RATE_MAX}
+                  step={VOICE_RATE_STEP}
+                  value={voiceRate}
+                  onChange={(e) => setVoiceRate(Number(e.target.value))}
+                  className="mt-2 w-full accent-primary"
+                />
+                <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
+                  <span>Más lenta</span>
+                  <span>Más rápida</span>
+                </div>
+              </Field>
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    if (!window.speechSynthesis) {
+                      toast.error("Este navegador no tiene voces");
+                      return;
+                    }
+                    window.speechSynthesis.cancel();
+                    const msg = new SpeechSynthesisUtterance(VOICE_PREVIEW_TEXT);
+                    applyVoiceToUtterance(msg, { voiceURI, voiceName, voiceLang, rate: voiceRate });
+                    window.speechSynthesis.speak(msg);
+                  } catch {
+                    toast.error("No se pudo reproducir la prueba");
+                  }
+                }}
+                className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-accent sm:w-auto"
+              >
+                <Volume2 className="h-4 w-4" /> Probar voz
+              </button>
+            </>
+          )}
           <p className="mt-3 flex items-start gap-2 rounded-lg bg-accent/50 p-3 text-xs text-muted-foreground">
-            <Info className="mt-0.5 h-3.5 w-3.5" />
-            La voz automática usa la síntesis de voz del navegador en la pantalla TV.
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            Las voces las instala el navegador o Windows de cada equipo. Para oír exactamente la misma en la TV, abrí Configuración en esa computadora, elegí la voz y guardá.
           </p>
         </Card>
 

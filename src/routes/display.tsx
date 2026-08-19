@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchTodayTickets } from "@/lib/sigat-queries";
 import { speakTicketCode, TicketCodeView } from "@/lib/ticket-code";
+import { applyVoiceToUtterance, DEFAULT_TV_VOICE, parseTvVoiceSettings, waitForSpeechVoices, type TvVoiceSettings } from "@/lib/tv-voice";
 import { Volume2, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/display")({
@@ -83,6 +84,9 @@ const defaultTv: TvSettings = {
   videoUrl: "",
   voiceEnabled: true,
 };
+
+/** Voz/velocidad elegidas por el admin; se leen al anunciar (no al encolar). */
+let tvVoiceConfig: TvVoiceSettings = DEFAULT_TV_VOICE;
 
 /** Audio compartido de la TV (el navegador exige un clic para habilitarlo). */
 let tvAudioCtx: AudioContext | null = null;
@@ -218,11 +222,7 @@ function speakOnce(text: string): Promise<void> {
       }
 
       const msg = new SpeechSynthesisUtterance(text);
-      // Solo lang: asignar voice distinto al lang duplica el audio en Chrome/Edge Windows
-      msg.lang = "es-ES";
-      msg.rate = 0.9;
-      msg.volume = 1;
-      msg.pitch = 1;
+      applyVoiceToUtterance(msg, tvVoiceConfig);
 
       let settled = false;
       let started = false;
@@ -258,6 +258,7 @@ async function playAnnounceSequence(ticketId: string, code: string, desk: string
   try {
     await unlockTvAudio();
     await waitSpeechIdle();
+    await waitForSpeechVoices();
     playCallDing();
     await sleep(550);
     await speakOnce(`${code} pasar a ${desk}`);
@@ -358,6 +359,7 @@ function DisplayPage() {
       if (!mounted || !data) return;
       const tvRow = data.find((r) => r.key === "tv_display")?.value as Record<string, unknown> | undefined;
       const soundRow = data.find((r) => r.key === "sound")?.value as Record<string, unknown> | undefined;
+      tvVoiceConfig = parseTvVoiceSettings(soundRow);
       setTv({
         institution: String(tvRow?.institution || defaultTv.institution),
         subtitle: String(tvRow?.subtitle || defaultTv.subtitle),
@@ -372,6 +374,7 @@ function DisplayPage() {
     const channel = supabase
       .channel("tv-tickets")
       .on("postgres_changes", { event: "*", schema: "public", table: "tickets" }, () => loadTickets())
+      .on("postgres_changes", { event: "*", schema: "public", table: "settings" }, () => loadSettings())
       .subscribe();
     const poll = setInterval(loadSettings, 20000);
     return () => {
