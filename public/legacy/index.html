@@ -18,7 +18,7 @@
         </div>
       </div>
       <p class="notice">
-        Solo login, llamar turno, finalizar y ausente.
+        Panel operador para Windows 7: llamar, derivar, finalizar y ausente.
         Admin y configuración: usá Windows 10/11.
       </p>
       <form id="login-form">
@@ -62,6 +62,9 @@
         <p id="active-meta" class="muted"></p>
         <div class="actions">
           <button id="recall-btn" type="button">Repetir llamado</button>
+          <button id="transfer-counter-btn" type="button" class="btn-transfer" hidden>Derivar a ventanilla</button>
+          <button id="transfer-cashier-btn" type="button" class="btn-transfer" hidden>Derivar a caja</button>
+          <button id="transfer-origin-btn" type="button" class="btn-transfer" hidden>Devolver a RUAT</button>
           <button id="finish-btn" type="button" class="btn-ok">Finalizar</button>
           <button id="absent-btn" type="button" class="btn-warn">Ausente</button>
           <button id="cancel-btn" type="button" class="btn-danger">Cancelar</button>

@@ -228,6 +228,128 @@ export async function updateTicketStatusLegacy(
   return t;
 }
 
+type TicketOriginFields = {
+  origin_service_point_id?: string | null;
+  origin_operator_id?: string | null;
+  service_point_id: string | null;
+  operator_id: string | null;
+};
+
+async function resolveRuatOrigin(supabase: Db, ticket: TicketOriginFields, userId: string) {
+  if (ticket.origin_service_point_id) {
+    return {
+      originSp: ticket.origin_service_point_id,
+      originOp: ticket.origin_operator_id ?? ticket.operator_id ?? userId,
+    };
+  }
+  if (!ticket.service_point_id) return { originSp: null as string | null, originOp: null as string | null };
+  const { data: sp } = await supabase
+    .from("service_points")
+    .select("kind, name")
+    .eq("id", ticket.service_point_id)
+    .maybeSingle();
+  if (!sp) return { originSp: null, originOp: null };
+  if (resolveSpKind(sp as { kind?: string | null; name: string }) !== "ruat") {
+    return { originSp: null, originOp: null };
+  }
+  return {
+    originSp: ticket.service_point_id,
+    originOp: ticket.operator_id ?? userId,
+  };
+}
+
+function assertTicketOwned(
+  ticket: { status: string; operator_id: string | null },
+  userId: string,
+) {
+  if (ticket.status !== "calling" && ticket.status !== "in_service") {
+    throw new Error("Solo se puede derivar un turno en atención");
+  }
+  if (ticket.operator_id && ticket.operator_id !== userId) {
+    throw new Error("Este turno no está asignado a tu usuario");
+  }
+}
+
+export async function transferToCounterLegacy(supabase: Db, userId: string, ticketId: string) {
+  const { data: ticket, error: tErr } = await supabase.from("tickets").select("*").eq("id", ticketId).single();
+  if (tErr || !ticket) throw new Error("Ticket no encontrado");
+  assertTicketOwned(ticket, userId);
+  const t = ticket as TicketOriginFields;
+  const { originSp, originOp } = await resolveRuatOrigin(supabase, t, userId);
+  if (!originSp) throw new Error("Solo un operador RUAT puede derivar a ventanilla como origen");
+
+  const { data: updated, error } = await supabase
+    .from("tickets")
+    .update({
+      status: "waiting",
+      transfer_to: "counter",
+      origin_service_point_id: originSp,
+      origin_operator_id: originOp,
+      service_point_id: null,
+      operator_id: null,
+      called_at: null,
+      started_at: null,
+      finished_at: null,
+    } as never)
+    .eq("id", ticketId)
+    .select("id, code, status")
+    .single();
+  if (error) throw new Error(error.message);
+  return updated;
+}
+
+export async function transferToCashierLegacy(supabase: Db, userId: string, ticketId: string) {
+  const { data: ticket, error: tErr } = await supabase.from("tickets").select("*").eq("id", ticketId).single();
+  if (tErr || !ticket) throw new Error("Ticket no encontrado");
+  assertTicketOwned(ticket, userId);
+  const t = ticket as TicketOriginFields;
+  const { originSp, originOp } = await resolveRuatOrigin(supabase, t, userId);
+
+  const { data: updated, error } = await supabase
+    .from("tickets")
+    .update({
+      status: "waiting",
+      transfer_to: "cashier",
+      origin_service_point_id: originSp,
+      origin_operator_id: originOp,
+      service_point_id: null,
+      operator_id: null,
+      called_at: null,
+      started_at: null,
+      finished_at: null,
+    } as never)
+    .eq("id", ticketId)
+    .select("id, code, status")
+    .single();
+  if (error) throw new Error(error.message);
+  return updated;
+}
+
+export async function returnToOriginLegacy(supabase: Db, userId: string, ticketId: string) {
+  const { data: ticket, error: tErr } = await supabase.from("tickets").select("*").eq("id", ticketId).single();
+  if (tErr || !ticket) throw new Error("Ticket no encontrado");
+  assertTicketOwned(ticket, userId);
+  const originSp = (ticket as { origin_service_point_id?: string | null }).origin_service_point_id;
+  const transferTo = originSp ? "origin" : "ruat";
+
+  const { data: updated, error } = await supabase
+    .from("tickets")
+    .update({
+      status: "waiting",
+      transfer_to: transferTo,
+      service_point_id: null,
+      operator_id: null,
+      called_at: null,
+      started_at: null,
+      finished_at: null,
+    } as never)
+    .eq("id", ticketId)
+    .select("id, code, status")
+    .single();
+  if (error) throw new Error(error.message);
+  return updated;
+}
+
 export async function getOperatorState(supabase: Db, userId: string) {
   const assigned = await findAssignedServicePoint(supabase, userId);
   const today = todayLaPaz();
@@ -256,7 +378,7 @@ export async function getOperatorState(supabase: Db, userId: string) {
       queueCount = waiting.filter(
         (t) => t.transfer_to === "cashier" || (t.transfer_to == null && /^C-/i.test(t.code)),
       ).length;
-    } else     if (kind === "ruat") {
+    } else if (kind === "ruat") {
       queueCount = waiting.filter(
         (t) =>
           (t.transfer_to === "origin" && t.origin_service_point_id === assigned.id) ||
@@ -268,6 +390,21 @@ export async function getOperatorState(supabase: Db, userId: string) {
     }
   }
 
+  let returnLabel = "Derivar a RUAT / Jefe";
+  if (myCalling?.origin_service_point_id) {
+    const { data: originSp } = await supabase
+      .from("service_points")
+      .select("name")
+      .eq("id", myCalling.origin_service_point_id)
+      .maybeSingle();
+    const originName = (originSp?.name ?? "").toLowerCase();
+    returnLabel = originName.includes("jefe") ? "Devolver a Jefe" : "Devolver a RUAT";
+  }
+
+  const canTransferToCounter = kind === "ruat" && !!myCalling;
+  const canTransferToCashier = (kind === "ruat" || kind === "counter") && !!myCalling;
+  const canReturnToOrigin = (kind === "counter" || kind === "cashier") && !!myCalling;
+
   return {
     servicePoint: assigned
       ? {
@@ -278,6 +415,12 @@ export async function getOperatorState(supabase: Db, userId: string) {
         }
       : null,
     queueCount,
+    actions: {
+      canTransferToCounter,
+      canTransferToCashier,
+      canReturnToOrigin,
+      returnLabel,
+    },
     myCalling: myCalling
       ? {
           id: myCalling.id,
@@ -286,6 +429,7 @@ export async function getOperatorState(supabase: Db, userId: string) {
           status: myCalling.status,
           area: (myCalling as { area?: { name?: string } | null }).area?.name ?? null,
           procedure: (myCalling as { procedure?: { name?: string } | null }).procedure?.name ?? null,
+          origin_service_point_id: myCalling.origin_service_point_id ?? null,
         }
       : null,
     recent: list.slice(0, 12).map((t) => ({

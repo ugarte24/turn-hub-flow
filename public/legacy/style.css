@@ -78,6 +78,7 @@ button:disabled { opacity: 0.55; cursor: default; }
 .btn-ok { background: #2f9e6d; border-color: #247a54; color: #fff; }
 .btn-warn { background: #e5a312; border-color: #b8820b; color: #1a1405; }
 .btn-danger { background: #c43c2e; border-color: #9a2f24; color: #fff; }
+.btn-transfer { background: #1f5f8b; border-color: #164866; color: #fff; }
 .btn-ghost {
   background: transparent;
   border-color: #c5d5cd;

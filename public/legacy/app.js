@@ -76,6 +76,14 @@
     $("desk-name").textContent = sp ? " · " + sp.name : " · Sin puesto";
     $("queue-count").textContent = String(state.queueCount || 0);
 
+    var actions = state.actions || {};
+    show($("transfer-counter-btn"), !!actions.canTransferToCounter);
+    show($("transfer-cashier-btn"), !!actions.canTransferToCashier);
+    show($("transfer-origin-btn"), !!actions.canReturnToOrigin);
+    if (actions.returnLabel) {
+      $("transfer-origin-btn").textContent = actions.returnLabel;
+    }
+
     var mine = state.myCalling;
     if (mine) {
       $("my-code").textContent = mine.displayCode || mine.code || "—";
@@ -94,6 +102,9 @@
       show($("panel-idle"), true);
       show($("panel-active"), false);
       $("call-btn").disabled = !(sp && sp.active);
+      show($("transfer-counter-btn"), false);
+      show($("transfer-cashier-btn"), false);
+      show($("transfer-origin-btn"), false);
     }
 
     var list = $("recent-list");
@@ -267,6 +278,40 @@
   $("cancel-btn").onclick = function () {
     if (!window.confirm("¿Cancelar este turno?")) return;
     updateStatus("cancelled", "Cancelar");
+  };
+
+  function doTransfer(action, label) {
+    var id = currentTicketId();
+    if (!id) {
+      setMsg("No hay turno activo", true);
+      return;
+    }
+    setMsg(label + "...", false);
+    api("/api/legacy/transfer", {
+      method: "POST",
+      body: { ticketId: id, action: action },
+    })
+      .then(function () {
+        return api("/api/legacy/state");
+      })
+      .then(function (state) {
+        renderState(state);
+        setMsg(label + " listo", false);
+      })
+      .catch(function (ex) {
+        setMsg(ex.message || "Error al derivar", true);
+      });
+  }
+
+  $("transfer-counter-btn").onclick = function () {
+    doTransfer("counter", "Derivar a ventanilla");
+  };
+  $("transfer-cashier-btn").onclick = function () {
+    doTransfer("cashier", "Derivar a caja");
+  };
+  $("transfer-origin-btn").onclick = function () {
+    var label = $("transfer-origin-btn").textContent || "Devolver";
+    doTransfer("origin", label);
   };
 
   // Si es celular, mandar a la app moderna

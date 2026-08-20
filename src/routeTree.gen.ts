@@ -19,6 +19,7 @@ import { Route as AuthenticatedOperatorRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedHostRouteImport } from './routes/_authenticated/host'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as ApiLegacyTransferRouteImport } from './routes/api/legacy/transfer'
 import { Route as ApiLegacyTicketStatusRouteImport } from './routes/api/legacy/ticket-status'
 import { Route as ApiLegacyStateRouteImport } from './routes/api/legacy/state'
 import { Route as ApiLegacyLoginRouteImport } from './routes/api/legacy/login'
@@ -76,6 +77,11 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const ApiLegacyTransferRoute = ApiLegacyTransferRouteImport.update({
+  id: '/api/legacy/transfer',
+  path: '/api/legacy/transfer',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiLegacyTicketStatusRoute = ApiLegacyTicketStatusRouteImport.update({
   id: '/api/legacy/ticket-status',
@@ -138,6 +144,7 @@ export interface FileRoutesByFullPath {
   '/api/legacy/login': typeof ApiLegacyLoginRoute
   '/api/legacy/state': typeof ApiLegacyStateRoute
   '/api/legacy/ticket-status': typeof ApiLegacyTicketStatusRoute
+  '/api/legacy/transfer': typeof ApiLegacyTransferRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesByTo {
@@ -156,6 +163,7 @@ export interface FileRoutesByTo {
   '/api/legacy/login': typeof ApiLegacyLoginRoute
   '/api/legacy/state': typeof ApiLegacyStateRoute
   '/api/legacy/ticket-status': typeof ApiLegacyTicketStatusRoute
+  '/api/legacy/transfer': typeof ApiLegacyTransferRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesById {
@@ -177,6 +185,7 @@ export interface FileRoutesById {
   '/api/legacy/login': typeof ApiLegacyLoginRoute
   '/api/legacy/state': typeof ApiLegacyStateRoute
   '/api/legacy/ticket-status': typeof ApiLegacyTicketStatusRoute
+  '/api/legacy/transfer': typeof ApiLegacyTransferRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRouteTypes {
@@ -198,6 +207,7 @@ export interface FileRouteTypes {
     | '/api/legacy/login'
     | '/api/legacy/state'
     | '/api/legacy/ticket-status'
+    | '/api/legacy/transfer'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -216,6 +226,7 @@ export interface FileRouteTypes {
     | '/api/legacy/login'
     | '/api/legacy/state'
     | '/api/legacy/ticket-status'
+    | '/api/legacy/transfer'
     | '/admin'
   id:
     | '__root__'
@@ -236,6 +247,7 @@ export interface FileRouteTypes {
     | '/api/legacy/login'
     | '/api/legacy/state'
     | '/api/legacy/ticket-status'
+    | '/api/legacy/transfer'
     | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
 }
@@ -250,6 +262,7 @@ export interface RootRouteChildren {
   ApiLegacyLoginRoute: typeof ApiLegacyLoginRoute
   ApiLegacyStateRoute: typeof ApiLegacyStateRoute
   ApiLegacyTicketStatusRoute: typeof ApiLegacyTicketStatusRoute
+  ApiLegacyTransferRoute: typeof ApiLegacyTransferRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -323,6 +336,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/api/legacy/transfer': {
+      id: '/api/legacy/transfer'
+      path: '/api/legacy/transfer'
+      fullPath: '/api/legacy/transfer'
+      preLoaderRoute: typeof ApiLegacyTransferRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/legacy/ticket-status': {
       id: '/api/legacy/ticket-status'
@@ -428,6 +448,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLegacyLoginRoute: ApiLegacyLoginRoute,
   ApiLegacyStateRoute: ApiLegacyStateRoute,
   ApiLegacyTicketStatusRoute: ApiLegacyTicketStatusRoute,
+  ApiLegacyTransferRoute: ApiLegacyTransferRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
