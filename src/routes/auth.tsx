@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
+import { authErrorMessage, isLegacyBrowser } from "@/lib/browser-compat";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Ingresar — SIGAT" }] }),
@@ -14,6 +15,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [legacy, setLegacy] = useState(false);
 
   async function goHome(userId: string) {
     const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
@@ -26,6 +28,7 @@ function AuthPage() {
   }
 
   useEffect(() => {
+    setLegacy(isLegacyBrowser());
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) void goHome(data.session.user.id);
     });
@@ -35,22 +38,39 @@ function AuthPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) {
+        toast.error(authErrorMessage(error));
+        return;
+      }
+      toast.success("Bienvenido");
+      await goHome(data.user.id);
+    } catch (err) {
+      toast.error(authErrorMessage(err as { message?: string }));
+    } finally {
+      setLoading(false);
     }
-    toast.success("Bienvenido");
-    await goHome(data.user.id);
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-gradient-hero p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:p-6">
+    <div className="flex min-h-screen min-h-dvh items-center justify-center bg-gradient-hero p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:p-6">
       <div className="w-full max-w-md">
         <Link to="/staff" className="mb-5 inline-flex min-h-10 items-center gap-2 text-sm text-white/80 hover:text-white sm:mb-6">
           <ArrowLeft className="h-4 w-4" /> Volver a funcionarios
         </Link>
+        {legacy && (
+          <div className="mb-4 rounded-2xl border border-amber-300/50 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm">
+            <p className="font-semibold">Navegador antiguo detectado (p. ej. Windows 7)</p>
+            <p className="mt-1 leading-relaxed">
+              SIGAT puede no iniciar sesión o ir muy lento aquí. Usá <strong>Chrome o Edge actualizado en Windows 10/11</strong>.
+              Internet Explorer no es compatible.
+            </p>
+          </div>
+        )}
         <div className="rounded-3xl border border-white/10 bg-card p-6 shadow-elegant sm:p-8">
           <div className="flex items-center gap-3">
             <img src="/sigat-icon.png" alt="SIGAT" className="h-11 w-11 rounded-xl shadow-elegant" />

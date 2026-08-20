@@ -8,15 +8,17 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth" });
+    // getSession es local/rápido; getUser siempre va a la red y en PCs viejas se siente lento.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData.session?.user;
+    if (!user) throw redirect({ to: "/auth" });
     // Los roles se cargan antes de renderizar para que el menú nazca
     // completo y no cambie de tamaño.
     const { data: roleRows } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", data.user.id);
-    return { user: data.user, roles: (roleRows ?? []).map((r) => r.role) };
+      .eq("user_id", user.id);
+    return { user, roles: (roleRows ?? []).map((r) => r.role) };
   },
   component: AuthLayout,
 });
