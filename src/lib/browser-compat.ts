@@ -1,4 +1,4 @@
-/** Detecta navegadores viejos (p. ej. Chrome de Windows 7) donde SIGAT puede fallar o ir lento. */
+/** Detecta navegadores viejos (p. ej. Chrome de Windows 7). */
 export function isLegacyBrowser(): boolean {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent;
@@ -8,6 +8,17 @@ export function isLegacyBrowser(): boolean {
   const firefox = ua.match(/Firefox\/(\d+)/i);
   if (firefox && Number(firefox[1]) > 0 && Number(firefox[1]) < 115) return true;
   return false;
+}
+
+/** Celular / tablet: siempre app moderna. */
+export function isMobileUserAgent(ua = typeof navigator !== "undefined" ? navigator.userAgent : ""): boolean {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(ua);
+}
+
+/** Win7 / navegador viejo en escritorio → panel /legacy. Móvil → app actual. */
+export function shouldUseLegacyPanel(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return isLegacyBrowser() && !isMobileUserAgent(navigator.userAgent);
 }
 
 export function authErrorMessage(error: { message?: string } | null | undefined): string {

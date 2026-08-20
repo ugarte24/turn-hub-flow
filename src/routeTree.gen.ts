@@ -19,6 +19,10 @@ import { Route as AuthenticatedOperatorRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedHostRouteImport } from './routes/_authenticated/host'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as ApiLegacyTicketStatusRouteImport } from './routes/api/legacy/ticket-status'
+import { Route as ApiLegacyStateRouteImport } from './routes/api/legacy/state'
+import { Route as ApiLegacyLoginRouteImport } from './routes/api/legacy/login'
+import { Route as ApiLegacyCallNextRouteImport } from './routes/api/legacy/call-next'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminServicePointsRouteImport } from './routes/_authenticated/admin.service-points'
@@ -73,6 +77,26 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const ApiLegacyTicketStatusRoute = ApiLegacyTicketStatusRouteImport.update({
+  id: '/api/legacy/ticket-status',
+  path: '/api/legacy/ticket-status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLegacyStateRoute = ApiLegacyStateRouteImport.update({
+  id: '/api/legacy/state',
+  path: '/api/legacy/state',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLegacyLoginRoute = ApiLegacyLoginRouteImport.update({
+  id: '/api/legacy/login',
+  path: '/api/legacy/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLegacyCallNextRoute = ApiLegacyCallNextRouteImport.update({
+  id: '/api/legacy/call-next',
+  path: '/api/legacy/call-next',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -110,6 +134,10 @@ export interface FileRoutesByFullPath {
   '/admin/service-points': typeof AuthenticatedAdminServicePointsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/api/legacy/call-next': typeof ApiLegacyCallNextRoute
+  '/api/legacy/login': typeof ApiLegacyLoginRoute
+  '/api/legacy/state': typeof ApiLegacyStateRoute
+  '/api/legacy/ticket-status': typeof ApiLegacyTicketStatusRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesByTo {
@@ -124,6 +152,10 @@ export interface FileRoutesByTo {
   '/admin/service-points': typeof AuthenticatedAdminServicePointsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/api/legacy/call-next': typeof ApiLegacyCallNextRoute
+  '/api/legacy/login': typeof ApiLegacyLoginRoute
+  '/api/legacy/state': typeof ApiLegacyStateRoute
+  '/api/legacy/ticket-status': typeof ApiLegacyTicketStatusRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesById {
@@ -141,6 +173,10 @@ export interface FileRoutesById {
   '/_authenticated/admin/service-points': typeof AuthenticatedAdminServicePointsRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/api/legacy/call-next': typeof ApiLegacyCallNextRoute
+  '/api/legacy/login': typeof ApiLegacyLoginRoute
+  '/api/legacy/state': typeof ApiLegacyStateRoute
+  '/api/legacy/ticket-status': typeof ApiLegacyTicketStatusRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRouteTypes {
@@ -158,6 +194,10 @@ export interface FileRouteTypes {
     | '/admin/service-points'
     | '/admin/settings'
     | '/admin/users'
+    | '/api/legacy/call-next'
+    | '/api/legacy/login'
+    | '/api/legacy/state'
+    | '/api/legacy/ticket-status'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -172,6 +212,10 @@ export interface FileRouteTypes {
     | '/admin/service-points'
     | '/admin/settings'
     | '/admin/users'
+    | '/api/legacy/call-next'
+    | '/api/legacy/login'
+    | '/api/legacy/state'
+    | '/api/legacy/ticket-status'
     | '/admin'
   id:
     | '__root__'
@@ -188,6 +232,10 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/service-points'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/users'
+    | '/api/legacy/call-next'
+    | '/api/legacy/login'
+    | '/api/legacy/state'
+    | '/api/legacy/ticket-status'
     | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
 }
@@ -198,6 +246,10 @@ export interface RootRouteChildren {
   DisplayRoute: typeof DisplayRoute
   StaffRoute: typeof StaffRoute
   TicketRoute: typeof TicketRoute
+  ApiLegacyCallNextRoute: typeof ApiLegacyCallNextRoute
+  ApiLegacyLoginRoute: typeof ApiLegacyLoginRoute
+  ApiLegacyStateRoute: typeof ApiLegacyStateRoute
+  ApiLegacyTicketStatusRoute: typeof ApiLegacyTicketStatusRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -272,6 +324,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/api/legacy/ticket-status': {
+      id: '/api/legacy/ticket-status'
+      path: '/api/legacy/ticket-status'
+      fullPath: '/api/legacy/ticket-status'
+      preLoaderRoute: typeof ApiLegacyTicketStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/legacy/state': {
+      id: '/api/legacy/state'
+      path: '/api/legacy/state'
+      fullPath: '/api/legacy/state'
+      preLoaderRoute: typeof ApiLegacyStateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/legacy/login': {
+      id: '/api/legacy/login'
+      path: '/api/legacy/login'
+      fullPath: '/api/legacy/login'
+      preLoaderRoute: typeof ApiLegacyLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/legacy/call-next': {
+      id: '/api/legacy/call-next'
+      path: '/api/legacy/call-next'
+      fullPath: '/api/legacy/call-next'
+      preLoaderRoute: typeof ApiLegacyCallNextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin/users': {
       id: '/_authenticated/admin/users'
       path: '/users'
@@ -344,6 +424,10 @@ const rootRouteChildren: RootRouteChildren = {
   DisplayRoute: DisplayRoute,
   StaffRoute: StaffRoute,
   TicketRoute: TicketRoute,
+  ApiLegacyCallNextRoute: ApiLegacyCallNextRoute,
+  ApiLegacyLoginRoute: ApiLegacyLoginRoute,
+  ApiLegacyStateRoute: ApiLegacyStateRoute,
+  ApiLegacyTicketStatusRoute: ApiLegacyTicketStatusRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { ShieldCheck, Monitor, Users2, ArrowRight, LayoutDashboard } from "lucide-react";
 import { APP_VERSION_LABEL } from "@/lib/version";
+import { shouldUseLegacyPanel } from "@/lib/browser-compat";
 
 export const Route = createFileRoute("/staff")({
   head: () => ({ meta: [{ title: "Funcionarios — SIGAT" }] }),
@@ -8,6 +10,12 @@ export const Route = createFileRoute("/staff")({
 });
 
 function StaffLanding() {
+  useEffect(() => {
+    if (shouldUseLegacyPanel()) {
+      window.location.replace("/legacy/");
+    }
+  }, []);
+
   return (
     <div className="min-h-dvh bg-background pb-[env(safe-area-inset-bottom)]">
       <header className="relative overflow-hidden bg-gradient-hero text-white">
@@ -31,6 +39,12 @@ function StaffLanding() {
             >
               Iniciar sesión <ArrowRight className="h-4 w-4" />
             </Link>
+            <a
+              href="/legacy/"
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-white/30 bg-white/10 px-6 py-3 font-semibold text-white transition hover:bg-white/20 sm:w-auto"
+            >
+              Panel Win7 (simple)
+            </a>
             <Link
               to="/display"
               className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-white/30 bg-white/10 px-6 py-3 font-semibold text-white backdrop-blur transition hover:bg-white/20 sm:w-auto"

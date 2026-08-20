@@ -1,0 +1,191 @@
+/* Panel SIGAT Win7 — CSS simple, sin oklch ni features modernas */
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #12372d;
+  color: #1a2e28;
+}
+#app {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 16px;
+}
+.card, .desk {
+  background: #ffffff;
+  border: 1px solid #d5e3dc;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.brand h1 {
+  margin: 0;
+  font-size: 22px;
+  color: #1b7f5a;
+}
+.muted { color: #5a7368; font-size: 13px; }
+.notice {
+  background: #fff8e6;
+  border: 1px solid #e5c56a;
+  color: #5a4708;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+label {
+  display: block;
+  margin-top: 12px;
+  font-size: 14px;
+  font-weight: bold;
+}
+input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  font-size: 16px;
+  border: 1px solid #c5d5cd;
+  border-radius: 8px;
+  background: #fff;
+}
+button {
+  font-size: 15px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #b8cfc4;
+  background: #eef4f1;
+  color: #1a2e28;
+  cursor: pointer;
+}
+button:disabled { opacity: 0.55; cursor: default; }
+#login-btn, .btn-primary {
+  width: 100%;
+  margin-top: 16px;
+  background: #1b7f5a;
+  border-color: #145a42;
+  color: #fff;
+  font-weight: bold;
+}
+.btn-ok { background: #2f9e6d; border-color: #247a54; color: #fff; }
+.btn-warn { background: #e5a312; border-color: #b8820b; color: #1a1405; }
+.btn-danger { background: #c43c2e; border-color: #9a2f24; color: #fff; }
+.btn-ghost {
+  background: transparent;
+  border-color: #c5d5cd;
+}
+.btn-ghost.full { width: 100%; margin-top: 10px; }
+.error { color: #c43c2e; margin-top: 10px; font-size: 14px; }
+.footer-links { margin-top: 16px; text-align: center; font-size: 13px; }
+.footer-links a { color: #1b7f5a; }
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  gap: 10px;
+}
+.stats {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 8px 0;
+  margin: 0 -8px 14px;
+}
+.stat {
+  display: table-cell;
+  background: #eef4f1;
+  border: 1px solid #d5e3dc;
+  border-radius: 8px;
+  padding: 10px 8px;
+  text-align: center;
+  vertical-align: top;
+}
+.stat span {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #5a7368;
+}
+.stat b {
+  display: block;
+  margin-top: 4px;
+  font-size: 20px;
+  color: #1b7f5a;
+}
+.panel {
+  border: 1px dashed #b8cfc4;
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+  margin-bottom: 14px;
+}
+.ticket-code {
+  margin: 6px 0 8px;
+  font-size: 48px;
+  font-weight: bold;
+  color: #1b7f5a;
+  letter-spacing: 0.04em;
+}
+.label {
+  margin: 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #5a7368;
+}
+.actions {
+  margin-top: 12px;
+}
+.actions button {
+  width: 100%;
+  margin-top: 8px;
+  font-weight: bold;
+}
+.msg {
+  background: #e8f2ed;
+  border: 1px solid #b8cfc4;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+h2 {
+  margin: 8px 0 8px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #5a7368;
+}
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #d5e3dc;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid #e6eee9;
+  font-size: 14px;
+}
+.list li:first-child { border-top: 0; }
+.badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eef4f1;
+  color: #234a3c;
+  white-space: nowrap;
+}

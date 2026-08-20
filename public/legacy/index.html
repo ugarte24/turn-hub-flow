@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SIGAT Operador (Win7)</title>
+  <link rel="icon" href="/favicon.png" type="image/png" />
+  <link rel="stylesheet" href="/legacy/style.css" />
+</head>
+<body>
+  <div id="app">
+    <section id="view-login" class="card">
+      <div class="brand">
+        <img src="/sigat-icon.png" alt="SIGAT" width="48" height="48" />
+        <div>
+          <h1>SIGAT Operador</h1>
+          <p class="muted">Panel simple para Windows 7</p>
+        </div>
+      </div>
+      <p class="notice">
+        Solo login, llamar turno, finalizar y ausente.
+        Admin y configuración: usá Windows 10/11.
+      </p>
+      <form id="login-form">
+        <label>Correo
+          <input id="email" type="email" required autocomplete="username" />
+        </label>
+        <label>Contraseña
+          <input id="password" type="password" required autocomplete="current-password" />
+        </label>
+        <button id="login-btn" type="submit">Ingresar</button>
+      </form>
+      <p id="login-error" class="error" hidden></p>
+      <p class="footer-links">
+        <a href="/auth">Versión moderna (Win10+ / celular)</a>
+      </p>
+    </section>
+
+    <section id="view-desk" class="desk" hidden>
+      <header class="top">
+        <div>
+          <strong>SIGAT</strong>
+          <span id="desk-name" class="muted"></span>
+        </div>
+        <button id="logout-btn" type="button" class="btn-ghost">Salir</button>
+      </header>
+
+      <div class="stats">
+        <div class="stat"><span>En espera</span><b id="queue-count">0</b></div>
+        <div class="stat"><span>Mi turno</span><b id="my-code">—</b></div>
+        <div class="stat"><span>Estado</span><b id="my-status">Libre</b></div>
+      </div>
+
+      <div id="panel-idle" class="panel">
+        <p>No estás atendiendo a nadie</p>
+        <button id="call-btn" type="button" class="btn-primary">Llamar siguiente</button>
+      </div>
+
+      <div id="panel-active" class="panel" hidden>
+        <p class="label">Ticket actual</p>
+        <p id="active-code" class="ticket-code">—</p>
+        <p id="active-meta" class="muted"></p>
+        <div class="actions">
+          <button id="recall-btn" type="button">Repetir llamado</button>
+          <button id="finish-btn" type="button" class="btn-ok">Finalizar</button>
+          <button id="absent-btn" type="button" class="btn-warn">Ausente</button>
+          <button id="cancel-btn" type="button" class="btn-danger">Cancelar</button>
+        </div>
+      </div>
+
+      <p id="desk-msg" class="msg" hidden></p>
+
+      <h2>Últimos turnos</h2>
+      <ul id="recent-list" class="list"></ul>
+      <button id="refresh-btn" type="button" class="btn-ghost full">Actualizar</button>
+    </section>
+  </div>
+  <script src="/legacy/app.js"></script>
+</body>
+</html>

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
-import { authErrorMessage, isLegacyBrowser } from "@/lib/browser-compat";
+import { authErrorMessage, isLegacyBrowser, shouldUseLegacyPanel } from "@/lib/browser-compat";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Ingresar — SIGAT" }] }),
@@ -28,6 +28,10 @@ function AuthPage() {
   }
 
   useEffect(() => {
+    if (shouldUseLegacyPanel()) {
+      window.location.replace("/legacy/");
+      return;
+    }
     setLegacy(isLegacyBrowser());
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) void goHome(data.session.user.id);
@@ -66,8 +70,11 @@ function AuthPage() {
           <div className="mb-4 rounded-2xl border border-amber-300/50 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm">
             <p className="font-semibold">Navegador antiguo detectado (p. ej. Windows 7)</p>
             <p className="mt-1 leading-relaxed">
-              El login puede funcionar, pero <strong>operar el sistema (llamar turnos, admin)</strong> requiere{" "}
-              <strong>Windows 10/11 con Chrome o Edge actualizado</strong>. Internet Explorer no es compatible.
+              Detectamos Windows 7 / navegador viejo. Si no te redirigió solo, abrí{" "}
+              <a href="/legacy/" className="font-semibold underline">
+                el panel simple
+              </a>
+              . En celular se usa la versión moderna.
             </p>
           </div>
         )}
