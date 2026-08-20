@@ -114,7 +114,52 @@
     }
   }
 
+  function renderNav(state) {
+    var user = state.user || {};
+    var roles = user.roles || [];
+    var isAdmin = roles.indexOf("admin") >= 0;
+    var isHost = roles.indexOf("host") >= 0;
+    var isOperator = roles.indexOf("operator") >= 0 || roles.length === 0 || isAdmin;
+
+    $("user-email").textContent = user.email || "";
+    $("app-version").textContent = state.version || "";
+
+    var items = [];
+    if (isOperator) {
+      items.push({ href: "/legacy/index.html", label: "Mi puesto", active: true });
+    }
+    if (isHost || isAdmin) {
+      items.push({ href: "/host", label: "Sacar turnos", active: false });
+    }
+    if (isAdmin) {
+      items.push({ href: "/admin", label: "Dashboard", active: false });
+      items.push({ href: "/admin/users", label: "Usuarios", active: false });
+      items.push({ href: "/admin/service-points", label: "Puestos", active: false });
+      items.push({ href: "/admin/procedures", label: "Áreas y trámites", active: false });
+      items.push({ href: "/admin/settings", label: "Configuración", active: false });
+    }
+
+    var nav = $("sidebar-nav");
+    nav.innerHTML = "";
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      var a = document.createElement("a");
+      a.className = "nav-link" + (item.active ? " active" : "");
+      a.href = item.href;
+      a.textContent = item.label;
+      nav.appendChild(a);
+    }
+  }
+
+  function setMenuOpen(open) {
+    var desk = $("view-desk");
+    if (open) desk.className = "page page-desk menu-open";
+    else desk.className = "page page-desk";
+    show($("menu-backdrop"), !!open);
+  }
+
   function renderState(state) {
+    renderNav(state);
     var sp = state.servicePoint;
     $("desk-title").textContent = sp ? sp.name : "Sin puesto asignado";
     $("desk-role").textContent = deskRoleText(sp);
@@ -186,6 +231,7 @@
   function showLogin() {
     show($("view-login"), true);
     show($("view-desk"), false);
+    setMenuOpen(false);
     if (pollTimer) {
       clearInterval(pollTimer);
       pollTimer = null;
@@ -195,6 +241,7 @@
   function showDesk() {
     show($("view-login"), false);
     show($("view-desk"), true);
+    setMenuOpen(false);
     refresh();
     if (pollTimer) clearInterval(pollTimer);
     pollTimer = setInterval(refresh, 4000);
@@ -263,9 +310,23 @@
       });
   };
 
-  $("logout-btn").onclick = function () {
+  function doLogout() {
     setToken("");
+    setMenuOpen(false);
     showLogin();
+  }
+
+  $("logout-btn").onclick = doLogout;
+  $("logout-btn-top").onclick = doLogout;
+
+  $("menu-open").onclick = function () {
+    setMenuOpen(true);
+  };
+  $("menu-close").onclick = function () {
+    setMenuOpen(false);
+  };
+  $("menu-backdrop").onclick = function () {
+    setMenuOpen(false);
   };
 
   $("refresh-btn").onclick = function () {

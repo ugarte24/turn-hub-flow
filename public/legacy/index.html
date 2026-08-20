@@ -35,78 +35,100 @@
     </section>
 
     <section id="view-desk" class="page page-desk" hidden>
-      <header class="topbar">
-        <div class="topbar-left">
-          <img src="/sigat-icon.png" alt="" width="28" height="28" />
-          <strong>SIGAT</strong>
-        </div>
-        <button id="logout-btn" type="button" class="btn btn-ghost">Salir</button>
-      </header>
+      <div id="menu-backdrop" class="menu-backdrop" hidden></div>
 
-      <main class="desk-main">
-        <div class="desk-head">
-          <p class="desk-kicker">Puesto de atención</p>
-          <h1 id="desk-title" class="desk-title">—</h1>
-          <p id="desk-role" class="desk-role"></p>
-          <p id="desk-inactive" class="desk-inactive" hidden>Este puesto está inactivo.</p>
-        </div>
-
-        <div class="stats">
-          <div class="stat">
-            <span class="stat-label">En espera</span>
-            <b id="queue-count" class="stat-value">0</b>
+      <aside id="sidebar" class="sidebar">
+        <div class="sidebar-brand">
+          <img src="/sigat-icon.png" alt="SIGAT" width="44" height="44" />
+          <div>
+            <p class="sidebar-kicker">Jefatura</p>
+            <strong class="sidebar-title">SIGAT</strong>
+            <p id="app-version" class="sidebar-version"></p>
           </div>
-          <div class="stat stat-accent">
-            <span class="stat-label">Mi turno</span>
-            <b id="my-code" class="stat-value stat-ticket">—</b>
+          <button id="menu-close" type="button" class="menu-close" aria-label="Cerrar menú">×</button>
+        </div>
+        <nav id="sidebar-nav" class="sidebar-nav"></nav>
+        <div class="sidebar-foot">
+          <p id="user-email" class="user-email"></p>
+          <button id="logout-btn" type="button" class="sidebar-logout">Cerrar sesión</button>
+        </div>
+      </aside>
+
+      <div class="desk-shell">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button id="menu-open" type="button" class="btn btn-ghost btn-menu" aria-label="Abrir menú">☰</button>
+            <img src="/sigat-icon.png" alt="" width="28" height="28" />
+            <strong>SIGAT</strong>
           </div>
-          <div class="stat">
-            <span class="stat-label">Estado</span>
-            <b id="my-status" class="stat-value">Libre</b>
+          <button id="logout-btn-top" type="button" class="btn btn-ghost">Salir</button>
+        </header>
+
+        <main class="desk-main">
+          <div class="desk-head">
+            <p class="desk-kicker">Puesto de atención</p>
+            <h1 id="desk-title" class="desk-title">—</h1>
+            <p id="desk-role" class="desk-role"></p>
+            <p id="desk-inactive" class="desk-inactive" hidden>Este puesto está inactivo.</p>
           </div>
-        </div>
 
-        <div id="panel-idle" class="panel panel-idle">
-          <p class="muted idle-text">No estás atendiendo a nadie</p>
-          <button id="call-btn" type="button" class="btn btn-primary btn-xl">Llamar siguiente</button>
-        </div>
-
-        <div id="panel-active" class="panel panel-active" hidden>
-          <p class="label">Ticket actual</p>
-          <p id="active-code" class="ticket-code">—</p>
-          <div id="active-tags" class="ticket-tags"></div>
-          <div class="actions-grid">
-            <button id="recall-btn" type="button" class="btn">Repetir llamado</button>
-            <button id="transfer-counter-btn" type="button" class="btn" hidden>Derivar a ventanilla</button>
-            <button id="transfer-cashier-btn" type="button" class="btn" hidden>Derivar a caja</button>
-            <button id="transfer-origin-btn" type="button" class="btn" hidden>Devolver a RUAT</button>
-            <button id="finish-btn" type="button" class="btn btn-ok">Finalizar</button>
-            <button id="absent-btn" type="button" class="btn btn-warn">Ausente</button>
-            <button id="cancel-btn" type="button" class="btn btn-danger">Cancelar</button>
+          <div class="stats">
+            <div class="stat">
+              <span class="stat-label">En espera</span>
+              <b id="queue-count" class="stat-value">0</b>
+            </div>
+            <div class="stat stat-accent">
+              <span class="stat-label">Mi turno</span>
+              <b id="my-code" class="stat-value stat-ticket">—</b>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Estado</span>
+              <b id="my-status" class="stat-value">Libre</b>
+            </div>
           </div>
-        </div>
 
-        <p id="desk-msg" class="msg" hidden></p>
+          <div id="panel-idle" class="panel panel-idle">
+            <p class="muted idle-text">No estás atendiendo a nadie</p>
+            <button id="call-btn" type="button" class="btn btn-primary btn-xl">Llamar siguiente</button>
+          </div>
 
-        <div class="section-head">
-          <h2>Cola del día</h2>
-          <button id="refresh-btn" type="button" class="btn btn-ghost btn-sm">Actualizar</button>
-        </div>
-        <div id="day-table-wrap" class="table-wrap">
-          <table class="day-table" id="day-table">
-            <thead>
-              <tr>
-                <th>Turno</th>
-                <th>Trámite</th>
-                <th>Estado</th>
-                <th>Puesto</th>
-              </tr>
-            </thead>
-            <tbody id="day-tbody"></tbody>
-          </table>
-        </div>
-        <p id="day-empty" class="day-empty" hidden>Sin turnos hoy</p>
-      </main>
+          <div id="panel-active" class="panel panel-active" hidden>
+            <p class="label">Ticket actual</p>
+            <p id="active-code" class="ticket-code">—</p>
+            <div id="active-tags" class="ticket-tags"></div>
+            <div class="actions-grid">
+              <button id="recall-btn" type="button" class="btn">Repetir llamado</button>
+              <button id="transfer-counter-btn" type="button" class="btn" hidden>Derivar a ventanilla</button>
+              <button id="transfer-cashier-btn" type="button" class="btn" hidden>Derivar a caja</button>
+              <button id="transfer-origin-btn" type="button" class="btn" hidden>Devolver a RUAT</button>
+              <button id="finish-btn" type="button" class="btn btn-ok">Finalizar</button>
+              <button id="absent-btn" type="button" class="btn btn-warn">Ausente</button>
+              <button id="cancel-btn" type="button" class="btn btn-danger">Cancelar</button>
+            </div>
+          </div>
+
+          <p id="desk-msg" class="msg" hidden></p>
+
+          <div class="section-head">
+            <h2>Cola del día</h2>
+            <button id="refresh-btn" type="button" class="btn btn-ghost btn-sm">Actualizar</button>
+          </div>
+          <div id="day-table-wrap" class="table-wrap">
+            <table class="day-table" id="day-table">
+              <thead>
+                <tr>
+                  <th>Turno</th>
+                  <th>Trámite</th>
+                  <th>Estado</th>
+                  <th>Puesto</th>
+                </tr>
+              </thead>
+              <tbody id="day-tbody"></tbody>
+            </table>
+          </div>
+          <p id="day-empty" class="day-empty" hidden>Sin turnos hoy</p>
+        </main>
+      </div>
     </section>
   </div>
   <script src="/legacy/app.js"></script>

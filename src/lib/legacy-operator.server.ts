@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseUrlAndAnon } from "@/integrations/supabase/env";
 import { todayLaPaz } from "@/lib/date";
+import { APP_VERSION_LABEL } from "@/lib/version";
 
 type Db = SupabaseClient<Database>;
 
@@ -353,13 +354,20 @@ export async function returnToOriginLegacy(supabase: Db, userId: string, ticketI
 export async function getOperatorState(supabase: Db, userId: string) {
   const assigned = await findAssignedServicePoint(supabase, userId);
   const today = todayLaPaz();
-  const { data: tickets } = await supabase
-    .from("tickets")
-    .select("*, area:areas(*), procedure:procedures(*), service_point:service_points!service_point_id(*)")
-    .eq("day", today)
-    .order("created_at", { ascending: false });
+
+  const [{ data: tickets }, { data: roleRows }, { data: userData }] = await Promise.all([
+    supabase
+      .from("tickets")
+      .select("*, area:areas(*), procedure:procedures(*), service_point:service_points!service_point_id(*)")
+      .eq("day", today)
+      .order("created_at", { ascending: false }),
+    supabase.from("user_roles").select("role").eq("user_id", userId),
+    supabase.auth.getUser(),
+  ]);
 
   const list = tickets ?? [];
+  const roles = (roleRows ?? []).map((r) => r.role);
+  const email = userData.user?.email ?? null;
   const myCalling =
     list.find(
       (t) =>
@@ -406,6 +414,11 @@ export async function getOperatorState(supabase: Db, userId: string) {
   const canReturnToOrigin = (kind === "counter" || kind === "cashier") && !!myCalling;
 
   return {
+    version: APP_VERSION_LABEL,
+    user: {
+      email,
+      roles,
+    },
     servicePoint: assigned
       ? {
           id: assigned.id,

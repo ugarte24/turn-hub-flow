@@ -133,6 +133,127 @@ input:focus {
 .page-desk {
   min-height: 100%;
   background: #f7faf8;
+  overflow: hidden;
+}
+
+.sidebar {
+  float: left;
+  width: 240px;
+  min-height: 100vh;
+  background: #1f3d34;
+  color: #f0faf5;
+  overflow: hidden;
+}
+.sidebar-brand {
+  padding: 20px 18px 16px;
+  overflow: hidden;
+  position: relative;
+}
+.sidebar-brand img {
+  float: left;
+  margin-right: 10px;
+  border-radius: 10px;
+  background: #fff;
+}
+.sidebar-brand > div {
+  overflow: hidden;
+}
+.sidebar-kicker {
+  margin: 0;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(240, 250, 245, 0.55);
+}
+.sidebar-title {
+  display: block;
+  font-size: 22px;
+  font-weight: 800;
+  color: #3dbe8b;
+  line-height: 1.1;
+}
+.sidebar-version {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: rgba(240, 250, 245, 0.45);
+}
+.menu-close {
+  display: none;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  color: #f0faf5;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sidebar-nav {
+  padding: 8px 10px 16px;
+  clear: both;
+}
+.nav-link {
+  display: block;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  color: #f0faf5;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+}
+.nav-link:hover {
+  background: #2a5246;
+  color: #fff;
+}
+.nav-link.active {
+  background: #3dbe8b;
+  color: #102820;
+}
+.nav-hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+.sidebar-foot {
+  clear: both;
+  border-top: 1px solid #2a4f43;
+  padding: 14px 16px 18px;
+}
+.user-email {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(240, 250, 245, 0.7);
+  word-break: break-all;
+}
+.sidebar-logout {
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #f0faf5;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.sidebar-logout:hover { color: #fff; text-decoration: underline; }
+
+.desk-shell {
+  margin-left: 240px;
+  min-height: 100vh;
+  background: #f7faf8;
+}
+
+.menu-backdrop {
+  display: none;
 }
 
 .topbar {
@@ -145,6 +266,15 @@ input:focus {
   float: left;
   overflow: hidden;
   padding-top: 2px;
+}
+.btn-menu {
+  display: none;
+  float: left;
+  margin-right: 8px;
+  min-width: 40px;
+  padding: 8px 10px;
+  font-size: 18px;
+  line-height: 1;
 }
 .topbar-left img {
   float: left;
@@ -467,6 +597,39 @@ input:focus {
 }
 
 #login-btn { margin-top: 16px; }
+
+@media screen and (max-width: 900px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 40;
+    float: none;
+    width: 280px;
+    margin-left: -300px;
+    min-height: 100%;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.25);
+  }
+  .page-desk.menu-open .sidebar {
+    margin-left: 0;
+  }
+  .menu-close { display: block; }
+  .btn-menu { display: inline-block; }
+  .desk-shell {
+    margin-left: 0;
+  }
+  .menu-backdrop {
+    display: block;
+    position: fixed;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 30;
+  }
+}
 
 @media screen and (max-width: 700px) {
   .desk-title { font-size: 22px; }

@@ -35,7 +35,7 @@ export const Route = createFileRoute("/api/legacy/login")({
             access_token: data.session.access_token,
             refresh_token: data.session.refresh_token,
             expires_in: data.session.expires_in,
-            user: { id: userId, email: data.user.email },
+            user: { id: userId, email: data.user.email, roles: roleList },
             servicePoint: assigned
               ? { id: assigned.id, name: assigned.name, active: assigned.active }
               : null,
