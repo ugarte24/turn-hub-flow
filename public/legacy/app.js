@@ -24,7 +24,20 @@
 
   function show(el, yes) {
     if (!el) return;
-    el.hidden = !yes;
+    if (yes) {
+      el.removeAttribute("hidden");
+      el.style.display = "";
+    } else {
+      el.setAttribute("hidden", "hidden");
+      el.style.display = "none";
+    }
+  }
+
+  function showBootError(msg) {
+    var el = $("boot-error");
+    if (!el) return;
+    el.style.display = "block";
+    el.textContent = msg || "Error al cargar el panel Win7";
   }
 
   function setMsg(text, isError) {
@@ -153,9 +166,15 @@
 
   function setMenuOpen(open) {
     var desk = $("view-desk");
+    if (!desk) return;
     if (open) desk.className = "page page-desk menu-open";
     else desk.className = "page page-desk";
-    show($("menu-backdrop"), !!open);
+    // El backdrop se muestra vía CSS (.menu-open .menu-backdrop)
+    var bd = $("menu-backdrop");
+    if (bd) {
+      if (open) bd.removeAttribute("hidden");
+      else bd.setAttribute("hidden", "hidden");
+    }
   }
 
   function renderState(state) {
@@ -282,6 +301,24 @@
     }
   };
 
+  function bindClick(id, fn) {
+    var el = $(id);
+    if (el) el.onclick = fn;
+  }
+
+  function doLogout() {
+    setToken("");
+    setMenuOpen(false);
+    showLogin();
+  }
+
+  bindClick("logout-btn", doLogout);
+  bindClick("logout-btn-top", doLogout);
+  bindClick("menu-open", function () { setMenuOpen(true); });
+  bindClick("menu-close", function () { setMenuOpen(false); });
+  bindClick("menu-backdrop", function () { setMenuOpen(false); });
+  bindClick("refresh-btn", function () { refresh(); });
+
   $("login-form").onsubmit = function (e) {
     e.preventDefault();
     var btn = $("login-btn");
@@ -310,30 +347,7 @@
       });
   };
 
-  function doLogout() {
-    setToken("");
-    setMenuOpen(false);
-    showLogin();
-  }
-
-  $("logout-btn").onclick = doLogout;
-  $("logout-btn-top").onclick = doLogout;
-
-  $("menu-open").onclick = function () {
-    setMenuOpen(true);
-  };
-  $("menu-close").onclick = function () {
-    setMenuOpen(false);
-  };
-  $("menu-backdrop").onclick = function () {
-    setMenuOpen(false);
-  };
-
-  $("refresh-btn").onclick = function () {
-    refresh();
-  };
-
-  $("call-btn").onclick = function () {
+  bindClick("call-btn", function () {
     var btn = $("call-btn");
     btn.disabled = true;
     setMsg("Llamando...", false);
@@ -355,7 +369,7 @@
       .then(function () {
         btn.disabled = false;
       });
-  };
+  });
 
   function updateStatus(status, label) {
     var id = currentTicketId();
@@ -380,19 +394,19 @@
       });
   }
 
-  $("recall-btn").onclick = function () {
+  bindClick("recall-btn", function () {
     updateStatus("calling", "Repetir llamado");
-  };
-  $("finish-btn").onclick = function () {
+  });
+  bindClick("finish-btn", function () {
     updateStatus("finished", "Finalizar");
-  };
-  $("absent-btn").onclick = function () {
+  });
+  bindClick("absent-btn", function () {
     updateStatus("absent", "Ausente");
-  };
-  $("cancel-btn").onclick = function () {
+  });
+  bindClick("cancel-btn", function () {
     if (!window.confirm("¿Cancelar este turno?")) return;
     updateStatus("cancelled", "Cancelar");
-  };
+  });
 
   function doTransfer(action, label) {
     var id = currentTicketId();
@@ -417,24 +431,28 @@
       });
   }
 
-  $("transfer-counter-btn").onclick = function () {
+  bindClick("transfer-counter-btn", function () {
     doTransfer("counter", "Derivar a ventanilla");
-  };
-  $("transfer-cashier-btn").onclick = function () {
+  });
+  bindClick("transfer-cashier-btn", function () {
     doTransfer("cashier", "Derivar a caja");
-  };
-  $("transfer-origin-btn").onclick = function () {
+  });
+  bindClick("transfer-origin-btn", function () {
     var label = $("transfer-origin-btn").textContent || "Devolver";
     doTransfer("origin", label);
-  };
+  });
 
   // Si es celular, mandar a la app moderna
-  var ua = navigator.userAgent || "";
-  if (/Android|iPhone|iPad|iPod|Mobile/i.test(ua)) {
-    window.location.replace("/auth");
-    return;
-  }
+  try {
+    var ua = navigator.userAgent || "";
+    if (/Android|iPhone|iPad|iPod|Mobile/i.test(ua)) {
+      window.location.replace("/auth");
+      return;
+    }
 
-  if (getToken()) showDesk();
-  else showLogin();
+    if (getToken()) showDesk();
+    else showLogin();
+  } catch (bootErr) {
+    showBootError(bootErr && bootErr.message ? bootErr.message : String(bootErr));
+  }
 })();

@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SIGAT Operador (Win7)</title>
   <link rel="icon" href="/favicon.png" type="image/png" />
-  <link rel="stylesheet" href="/legacy/style.css" />
+  <link rel="stylesheet" href="/legacy/style.css?v=1.0.86" />
 </head>
 <body>
+  <div id="boot-error" class="boot-error" style="display:none;margin:16px;padding:12px;background:#fdecea;border:1px solid #f0c2bc;color:#9a2f24;font-family:Tahoma,Arial,sans-serif;"></div>
   <div id="app">
     <section id="view-login" class="page page-login">
       <div class="login-box">
@@ -39,11 +40,13 @@
 
       <aside id="sidebar" class="sidebar">
         <div class="sidebar-brand">
-          <img src="/sigat-icon.png" alt="SIGAT" width="44" height="44" />
-          <div>
-            <p class="sidebar-kicker">Jefatura</p>
-            <strong class="sidebar-title">SIGAT</strong>
-            <p id="app-version" class="sidebar-version"></p>
+          <div class="sidebar-brand-row">
+            <img src="/sigat-icon.png" alt="SIGAT" width="44" height="44" />
+            <div class="sidebar-brand-text">
+              <p class="sidebar-kicker">Jefatura</p>
+              <strong class="sidebar-title">SIGAT</strong>
+              <p id="app-version" class="sidebar-version"></p>
+            </div>
           </div>
           <button id="menu-close" type="button" class="menu-close" aria-label="Cerrar menú">×</button>
         </div>
@@ -131,6 +134,6 @@
       </div>
     </section>
   </div>
-  <script src="/legacy/app.js"></script>
+  <script src="/legacy/app.js?v=1.0.86"></script>
 </body>
 </html>

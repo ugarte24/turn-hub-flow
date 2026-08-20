@@ -8,11 +8,15 @@
 html, body {
   margin: 0;
   padding: 0;
-  min-height: 100%;
+  height: 100%;
   font-family: "Segoe UI", Tahoma, Arial, Helvetica, sans-serif;
   font-size: 15px;
   color: #1a2e28;
   background: #f7faf8;
+}
+
+#app {
+  min-height: 100%;
 }
 
 a { color: #1b7f5a; }
@@ -23,7 +27,7 @@ a:hover { color: #145a42; }
   min-height: 100%;
   padding: 28px 14px;
   background: #12372d;
-  background-image: linear-gradient(160deg, #145a42 0%, #12372d 55%, #0f2a22 100%);
+  background-image: linear-gradient(180deg, #145a42 0%, #12372d 60%, #0f2a22 100%);
   background-repeat: no-repeat;
   text-align: center;
 }
@@ -131,51 +135,63 @@ input:focus {
 
 /* ---------- Desk ---------- */
 .page-desk {
+  position: relative;
   min-height: 100%;
   background: #f7faf8;
-  overflow: hidden;
 }
 
 .sidebar {
-  float: left;
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
   width: 240px;
-  min-height: 100vh;
   background: #1f3d34;
   color: #f0faf5;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  z-index: 2;
 }
 .sidebar-brand {
   padding: 20px 18px 16px;
-  overflow: hidden;
   position: relative;
 }
-.sidebar-brand img {
-  float: left;
-  margin-right: 10px;
+.sidebar-brand-row {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+.sidebar-brand-row img {
+  display: table-cell;
+  vertical-align: middle;
+  width: 44px;
   border-radius: 10px;
   background: #fff;
 }
-.sidebar-brand > div {
-  overflow: hidden;
+.sidebar-brand-text {
+  display: table-cell;
+  vertical-align: middle;
+  padding-left: 10px;
 }
 .sidebar-kicker {
   margin: 0;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: rgba(240, 250, 245, 0.55);
+  color: #a8c4b8;
 }
 .sidebar-title {
   display: block;
+  margin-top: 2px;
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   color: #3dbe8b;
   line-height: 1.1;
 }
 .sidebar-version {
   margin: 2px 0 0;
   font-size: 11px;
-  color: rgba(240, 250, 245, 0.45);
+  color: #7a9a8c;
 }
 .menu-close {
   display: none;
@@ -194,7 +210,6 @@ input:focus {
 
 .sidebar-nav {
   padding: 8px 10px 16px;
-  clear: both;
 }
 .nav-link {
   display: block;
@@ -214,23 +229,15 @@ input:focus {
   background: #3dbe8b;
   color: #102820;
 }
-.nav-hint {
-  display: block;
-  margin-top: 2px;
-  font-size: 10px;
-  font-weight: 500;
-  opacity: 0.7;
-}
 
 .sidebar-foot {
-  clear: both;
   border-top: 1px solid #2a4f43;
   padding: 14px 16px 18px;
 }
 .user-email {
   margin: 0;
   font-size: 12px;
-  color: rgba(240, 250, 245, 0.7);
+  color: #a8c4b8;
   word-break: break-all;
 }
 .sidebar-logout {
@@ -248,8 +255,10 @@ input:focus {
 
 .desk-shell {
   margin-left: 240px;
-  min-height: 100vh;
+  min-height: 100%;
   background: #f7faf8;
+  position: relative;
+  z-index: 1;
 }
 
 .menu-backdrop {
@@ -604,12 +613,9 @@ input:focus {
     left: 0;
     top: 0;
     bottom: 0;
-    z-index: 40;
-    float: none;
     width: 280px;
     margin-left: -300px;
-    min-height: 100%;
-    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.25);
+    z-index: 40;
   }
   .page-desk.menu-open .sidebar {
     margin-left: 0;
@@ -620,14 +626,19 @@ input:focus {
     margin-left: 0;
   }
   .menu-backdrop {
-    display: block;
+    display: none;
     position: fixed;
     left: 0;
     top: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.45);
+    background: #000;
+    opacity: 0.45;
+    filter: alpha(opacity=45);
     z-index: 30;
+  }
+  .page-desk.menu-open .menu-backdrop {
+    display: block;
   }
 }
 
