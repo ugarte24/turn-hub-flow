@@ -47,6 +47,13 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const url = new URL(request.url);
+      // El router SPA captura /legacy y muestra 404; el panel real es estático.
+      if (url.pathname === "/legacy" || url.pathname === "/legacy/") {
+        url.pathname = "/legacy/index.html";
+        return Response.redirect(url.toString(), 302);
+      }
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

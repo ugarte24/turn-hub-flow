@@ -12,7 +12,7 @@ export const Route = createFileRoute("/staff")({
 function StaffLanding() {
   useEffect(() => {
     if (shouldUseLegacyPanel()) {
-      window.location.replace("/legacy/");
+      window.location.replace("/legacy/index.html");
     }
   }, []);
 
@@ -40,7 +40,7 @@ function StaffLanding() {
               Iniciar sesión <ArrowRight className="h-4 w-4" />
             </Link>
             <a
-              href="/legacy/"
+              href="/legacy/index.html"
               className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-white/30 bg-white/10 px-6 py-3 font-semibold text-white transition hover:bg-white/20 sm:w-auto"
             >
               Panel Win7 (simple)

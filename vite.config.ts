@@ -5,6 +5,26 @@
 //     React/TanStack dedupe, error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import type { Plugin } from "vite";
+
+/** En dev, /legacy cae en el 404 del SPA; el panel vive en /legacy/index.html */
+function legacyPanelRedirect(): Plugin {
+  return {
+    name: "sigat-legacy-panel-redirect",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const path = (req.url || "").split("?")[0];
+        if (path === "/legacy" || path === "/legacy/") {
+          res.statusCode = 302;
+          res.setHeader("Location", "/legacy/index.html");
+          res.end();
+          return;
+        }
+        next();
+      });
+    },
+  };
+}
 
 export default defineConfig({
   tanstackStart: {
@@ -14,6 +34,7 @@ export default defineConfig({
   },
   // Chrome 109 = último Chrome de Windows 7. Sin esto el panel suele romperse tras el login.
   vite: {
+    plugins: [legacyPanelRedirect()],
     build: {
       target: ["chrome109", "firefox115", "safari15"],
       cssTarget: "chrome109",

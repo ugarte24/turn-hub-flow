@@ -29,7 +29,7 @@ function AuthPage() {
 
   useEffect(() => {
     if (shouldUseLegacyPanel()) {
-      window.location.replace("/legacy/");
+      window.location.replace("/legacy/index.html");
       return;
     }
     setLegacy(isLegacyBrowser());
@@ -71,7 +71,7 @@ function AuthPage() {
             <p className="font-semibold">Navegador antiguo detectado (p. ej. Windows 7)</p>
             <p className="mt-1 leading-relaxed">
               Detectamos Windows 7 / navegador viejo. Si no te redirigió solo, abrí{" "}
-              <a href="/legacy/" className="font-semibold underline">
+              <a href="/legacy/index.html" className="font-semibold underline">
                 el panel simple
               </a>
               . En celular se usa la versión moderna.

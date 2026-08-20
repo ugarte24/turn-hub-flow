@@ -9,16 +9,14 @@
 </head>
 <body>
   <div id="app">
-    <section id="view-login" class="shell">
-      <div class="shell-head">
-        <img src="/sigat-icon.png" alt="SIGAT" width="52" height="52" />
-        <div>
+    <section id="view-login" class="page page-login">
+      <div class="login-box">
+        <div class="login-brand">
+          <img src="/sigat-icon.png" alt="SIGAT" width="56" height="56" />
           <p class="eyebrow">Jefatura de Recaudaciones</p>
-          <h1>SIGAT Operador</h1>
-          <p class="muted">Panel compatible con Windows 7</p>
+          <h1>SIGAT</h1>
+          <p class="subtitle">Panel operador · Windows 7</p>
         </div>
-      </div>
-      <div class="shell-body">
         <p class="notice">
           Llamar, derivar, finalizar y ausente. Para administración usá Windows 10/11.
         </p>
@@ -27,47 +25,47 @@
           <input id="email" type="email" required autocomplete="username" placeholder="usuario@ejemplo.com" />
           <label for="password">Contraseña</label>
           <input id="password" type="password" required autocomplete="current-password" />
-          <button id="login-btn" type="submit" class="btn btn-primary btn-block">Ingresar</button>
+          <button id="login-btn" type="submit" class="btn btn-primary btn-block btn-lg">Ingresar</button>
         </form>
         <p id="login-error" class="error" hidden></p>
         <p class="footer-links">
-          <a href="/auth">Ir a la versión moderna (Win10+ / celular)</a>
+          <a href="/auth">Versión moderna (Win10+ / celular)</a>
         </p>
       </div>
     </section>
 
-    <section id="view-desk" class="shell" hidden>
+    <section id="view-desk" class="page page-desk" hidden>
       <header class="topbar">
-        <div class="topbar-brand">
-          <img src="/sigat-icon.png" alt="" width="36" height="36" />
-          <div>
+        <div class="topbar-left">
+          <img src="/sigat-icon.png" alt="" width="32" height="32" />
+          <div class="topbar-text">
             <strong>SIGAT</strong>
-            <span id="desk-name" class="muted"></span>
+            <span id="desk-name" class="desk-name"></span>
           </div>
         </div>
         <button id="logout-btn" type="button" class="btn btn-ghost">Salir</button>
       </header>
 
-      <div class="shell-body">
+      <main class="desk-main">
         <div class="stats">
           <div class="stat">
-            <span>En espera</span>
-            <b id="queue-count">0</b>
+            <span class="stat-label">En espera</span>
+            <b id="queue-count" class="stat-value">0</b>
           </div>
           <div class="stat stat-accent">
-            <span>Mi turno</span>
-            <b id="my-code">—</b>
+            <span class="stat-label">Mi turno</span>
+            <b id="my-code" class="stat-value">—</b>
           </div>
           <div class="stat">
-            <span>Estado</span>
-            <b id="my-status">Libre</b>
+            <span class="stat-label">Estado</span>
+            <b id="my-status" class="stat-value">Libre</b>
           </div>
         </div>
 
         <div id="panel-idle" class="panel panel-idle">
           <p class="panel-title">Puesto libre</p>
           <p class="muted">No estás atendiendo a nadie en este momento.</p>
-          <button id="call-btn" type="button" class="btn btn-primary btn-lg btn-block">Llamar siguiente</button>
+          <button id="call-btn" type="button" class="btn btn-primary btn-xl btn-block">Llamar siguiente</button>
         </div>
 
         <div id="panel-active" class="panel panel-active" hidden>
@@ -94,7 +92,7 @@
           <button id="refresh-btn" type="button" class="btn btn-ghost btn-sm">Actualizar</button>
         </div>
         <ul id="recent-list" class="list"></ul>
-      </div>
+      </main>
     </section>
   </div>
   <script src="/legacy/app.js"></script>

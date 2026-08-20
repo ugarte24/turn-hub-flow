@@ -15,7 +15,7 @@ export function isMobileUserAgent(ua = typeof navigator !== "undefined" ? naviga
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(ua);
 }
 
-/** Win7 / navegador viejo en escritorio → panel /legacy. Móvil → app actual. */
+/** Win7 / navegador viejo en escritorio → panel /legacy/index.html. Móvil → app actual. */
 export function shouldUseLegacyPanel(): boolean {
   if (typeof navigator === "undefined") return false;
   return isLegacyBrowser() && !isMobileUserAgent(navigator.userAgent);

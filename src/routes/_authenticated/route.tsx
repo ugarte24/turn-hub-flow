@@ -35,7 +35,7 @@ function AuthLayout() {
 
   useEffect(() => {
     if (shouldUseLegacyPanel()) {
-      window.location.replace("/legacy/");
+      window.location.replace("/legacy/index.html");
     }
   }, []);
 
