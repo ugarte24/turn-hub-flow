@@ -427,6 +427,7 @@ export async function getOperatorState(supabase: Db, userId: string) {
           code: myCalling.code,
           displayCode: formatTicketCodeLegacy(myCalling.code),
           status: myCalling.status,
+          ci: myCalling.ci ?? null,
           area: (myCalling as { area?: { name?: string } | null }).area?.name ?? null,
           procedure: (myCalling as { procedure?: { name?: string } | null }).procedure?.name ?? null,
           origin_service_point_id: myCalling.origin_service_point_id ?? null,

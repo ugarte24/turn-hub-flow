@@ -37,16 +37,20 @@
     <section id="view-desk" class="page page-desk" hidden>
       <header class="topbar">
         <div class="topbar-left">
-          <img src="/sigat-icon.png" alt="" width="32" height="32" />
-          <div class="topbar-text">
-            <strong>SIGAT</strong>
-            <span id="desk-name" class="desk-name"></span>
-          </div>
+          <img src="/sigat-icon.png" alt="" width="28" height="28" />
+          <strong>SIGAT</strong>
         </div>
         <button id="logout-btn" type="button" class="btn btn-ghost">Salir</button>
       </header>
 
       <main class="desk-main">
+        <div class="desk-head">
+          <p class="desk-kicker">Puesto de atención</p>
+          <h1 id="desk-title" class="desk-title">—</h1>
+          <p id="desk-role" class="desk-role"></p>
+          <p id="desk-inactive" class="desk-inactive" hidden>Este puesto está inactivo.</p>
+        </div>
+
         <div class="stats">
           <div class="stat">
             <span class="stat-label">En espera</span>
@@ -54,7 +58,7 @@
           </div>
           <div class="stat stat-accent">
             <span class="stat-label">Mi turno</span>
-            <b id="my-code" class="stat-value">—</b>
+            <b id="my-code" class="stat-value stat-ticket">—</b>
           </div>
           <div class="stat">
             <span class="stat-label">Estado</span>
@@ -63,25 +67,22 @@
         </div>
 
         <div id="panel-idle" class="panel panel-idle">
-          <p class="panel-title">Puesto libre</p>
-          <p class="muted">No estás atendiendo a nadie en este momento.</p>
-          <button id="call-btn" type="button" class="btn btn-primary btn-xl btn-block">Llamar siguiente</button>
+          <p class="muted idle-text">No estás atendiendo a nadie</p>
+          <button id="call-btn" type="button" class="btn btn-primary btn-xl">Llamar siguiente</button>
         </div>
 
         <div id="panel-active" class="panel panel-active" hidden>
           <p class="label">Ticket actual</p>
           <p id="active-code" class="ticket-code">—</p>
-          <p id="active-meta" class="ticket-meta"></p>
-          <div class="actions">
-            <button id="recall-btn" type="button" class="btn btn-block">Repetir llamado</button>
-            <button id="transfer-counter-btn" type="button" class="btn btn-transfer btn-block" hidden>Derivar a ventanilla</button>
-            <button id="transfer-cashier-btn" type="button" class="btn btn-transfer btn-block" hidden>Derivar a caja</button>
-            <button id="transfer-origin-btn" type="button" class="btn btn-transfer btn-block" hidden>Devolver a RUAT</button>
-            <div class="actions-row">
-              <button id="finish-btn" type="button" class="btn btn-ok">Finalizar</button>
-              <button id="absent-btn" type="button" class="btn btn-warn">Ausente</button>
-            </div>
-            <button id="cancel-btn" type="button" class="btn btn-danger btn-block">Cancelar</button>
+          <div id="active-tags" class="ticket-tags"></div>
+          <div class="actions-grid">
+            <button id="recall-btn" type="button" class="btn">Repetir llamado</button>
+            <button id="transfer-counter-btn" type="button" class="btn" hidden>Derivar a ventanilla</button>
+            <button id="transfer-cashier-btn" type="button" class="btn" hidden>Derivar a caja</button>
+            <button id="transfer-origin-btn" type="button" class="btn" hidden>Devolver a RUAT</button>
+            <button id="finish-btn" type="button" class="btn btn-ok">Finalizar</button>
+            <button id="absent-btn" type="button" class="btn btn-warn">Ausente</button>
+            <button id="cancel-btn" type="button" class="btn btn-danger">Cancelar</button>
           </div>
         </div>
 

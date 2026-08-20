@@ -61,14 +61,18 @@
     });
   }
 
-  function statusLabelShort(s) {
-    if (s === "waiting") return "Espera";
-    if (s === "calling") return "Llamando";
-    if (s === "in_service") return "Atención";
-    if (s === "finished") return "Fin";
-    if (s === "absent") return "Ausente";
-    if (s === "cancelled") return "Cancelado";
-    return s || "—";
+  function deskRoleText(sp) {
+    if (!sp) return "Sin puesto asignado";
+    var kind = sp.kind || "standard";
+    var name = (sp.name || "").toLowerCase();
+    if (kind === "ruat") {
+      return name.indexOf("jefe") >= 0
+        ? "Jefe de Recaudaciones — puede derivar a ventanilla o caja"
+        : "Operador RUAT — puede derivar a ventanilla o caja";
+    }
+    if (kind === "counter") return "Ventanilla — puede derivar a caja o devolver al origen";
+    if (kind === "cashier") return "Caja — puede devolver al origen (RUAT o Jefe)";
+    return "Puesto general";
   }
 
   /** Misma lógica de StatusPill del panel moderno */
@@ -86,9 +90,35 @@
     return { label: s || "—", cls: "pill-muted" };
   }
 
+  function renderTags(mine) {
+    var box = $("active-tags");
+    box.innerHTML = "";
+    if (!mine) return;
+    if (mine.area) {
+      var a = document.createElement("span");
+      a.className = "tag";
+      a.textContent = mine.area;
+      box.appendChild(a);
+    }
+    if (mine.procedure) {
+      var p = document.createElement("span");
+      p.className = "tag";
+      p.textContent = mine.procedure;
+      box.appendChild(p);
+    }
+    if (mine.ci) {
+      var c = document.createElement("span");
+      c.className = "tag tag-ci";
+      c.textContent = "CI: " + mine.ci;
+      box.appendChild(c);
+    }
+  }
+
   function renderState(state) {
     var sp = state.servicePoint;
-    $("desk-name").textContent = sp ? " · " + sp.name : " · Sin puesto";
+    $("desk-title").textContent = sp ? sp.name : "Sin puesto asignado";
+    $("desk-role").textContent = deskRoleText(sp);
+    show($("desk-inactive"), !!(sp && sp.active === false));
     $("queue-count").textContent = String(state.queueCount || 0);
 
     var actions = state.actions || {};
@@ -102,18 +132,16 @@
     var mine = state.myCalling;
     if (mine) {
       $("my-code").textContent = mine.displayCode || mine.code || "—";
-      $("my-status").textContent = statusLabelShort(mine.status);
+      $("my-status").textContent = mine.status === "calling" ? "Llamando" : "Atención";
       $("active-code").textContent = mine.displayCode || mine.code || "—";
-      var meta = [];
-      if (mine.area) meta.push(mine.area);
-      if (mine.procedure) meta.push(mine.procedure);
-      $("active-meta").textContent = meta.join(" · ");
+      renderTags(mine);
       show($("panel-idle"), false);
       show($("panel-active"), true);
       $("call-btn").disabled = true;
     } else {
       $("my-code").textContent = "—";
       $("my-status").textContent = "Libre";
+      $("active-tags").innerHTML = "";
       show($("panel-idle"), true);
       show($("panel-active"), false);
       $("call-btn").disabled = !(sp && sp.active);
