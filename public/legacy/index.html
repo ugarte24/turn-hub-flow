@@ -9,73 +9,92 @@
 </head>
 <body>
   <div id="app">
-    <section id="view-login" class="card">
-      <div class="brand">
-        <img src="/sigat-icon.png" alt="SIGAT" width="48" height="48" />
+    <section id="view-login" class="shell">
+      <div class="shell-head">
+        <img src="/sigat-icon.png" alt="SIGAT" width="52" height="52" />
         <div>
+          <p class="eyebrow">Jefatura de Recaudaciones</p>
           <h1>SIGAT Operador</h1>
-          <p class="muted">Panel simple para Windows 7</p>
+          <p class="muted">Panel compatible con Windows 7</p>
         </div>
       </div>
-      <p class="notice">
-        Panel operador para Windows 7: llamar, derivar, finalizar y ausente.
-        Admin y configuración: usá Windows 10/11.
-      </p>
-      <form id="login-form">
-        <label>Correo
-          <input id="email" type="email" required autocomplete="username" />
-        </label>
-        <label>Contraseña
+      <div class="shell-body">
+        <p class="notice">
+          Llamar, derivar, finalizar y ausente. Para administración usá Windows 10/11.
+        </p>
+        <form id="login-form" class="login-form">
+          <label for="email">Correo</label>
+          <input id="email" type="email" required autocomplete="username" placeholder="usuario@ejemplo.com" />
+          <label for="password">Contraseña</label>
           <input id="password" type="password" required autocomplete="current-password" />
-        </label>
-        <button id="login-btn" type="submit">Ingresar</button>
-      </form>
-      <p id="login-error" class="error" hidden></p>
-      <p class="footer-links">
-        <a href="/auth">Versión moderna (Win10+ / celular)</a>
-      </p>
+          <button id="login-btn" type="submit" class="btn btn-primary btn-block">Ingresar</button>
+        </form>
+        <p id="login-error" class="error" hidden></p>
+        <p class="footer-links">
+          <a href="/auth">Ir a la versión moderna (Win10+ / celular)</a>
+        </p>
+      </div>
     </section>
 
-    <section id="view-desk" class="desk" hidden>
-      <header class="top">
-        <div>
-          <strong>SIGAT</strong>
-          <span id="desk-name" class="muted"></span>
+    <section id="view-desk" class="shell" hidden>
+      <header class="topbar">
+        <div class="topbar-brand">
+          <img src="/sigat-icon.png" alt="" width="36" height="36" />
+          <div>
+            <strong>SIGAT</strong>
+            <span id="desk-name" class="muted"></span>
+          </div>
         </div>
-        <button id="logout-btn" type="button" class="btn-ghost">Salir</button>
+        <button id="logout-btn" type="button" class="btn btn-ghost">Salir</button>
       </header>
 
-      <div class="stats">
-        <div class="stat"><span>En espera</span><b id="queue-count">0</b></div>
-        <div class="stat"><span>Mi turno</span><b id="my-code">—</b></div>
-        <div class="stat"><span>Estado</span><b id="my-status">Libre</b></div>
-      </div>
-
-      <div id="panel-idle" class="panel">
-        <p>No estás atendiendo a nadie</p>
-        <button id="call-btn" type="button" class="btn-primary">Llamar siguiente</button>
-      </div>
-
-      <div id="panel-active" class="panel" hidden>
-        <p class="label">Ticket actual</p>
-        <p id="active-code" class="ticket-code">—</p>
-        <p id="active-meta" class="muted"></p>
-        <div class="actions">
-          <button id="recall-btn" type="button">Repetir llamado</button>
-          <button id="transfer-counter-btn" type="button" class="btn-transfer" hidden>Derivar a ventanilla</button>
-          <button id="transfer-cashier-btn" type="button" class="btn-transfer" hidden>Derivar a caja</button>
-          <button id="transfer-origin-btn" type="button" class="btn-transfer" hidden>Devolver a RUAT</button>
-          <button id="finish-btn" type="button" class="btn-ok">Finalizar</button>
-          <button id="absent-btn" type="button" class="btn-warn">Ausente</button>
-          <button id="cancel-btn" type="button" class="btn-danger">Cancelar</button>
+      <div class="shell-body">
+        <div class="stats">
+          <div class="stat">
+            <span>En espera</span>
+            <b id="queue-count">0</b>
+          </div>
+          <div class="stat stat-accent">
+            <span>Mi turno</span>
+            <b id="my-code">—</b>
+          </div>
+          <div class="stat">
+            <span>Estado</span>
+            <b id="my-status">Libre</b>
+          </div>
         </div>
+
+        <div id="panel-idle" class="panel panel-idle">
+          <p class="panel-title">Puesto libre</p>
+          <p class="muted">No estás atendiendo a nadie en este momento.</p>
+          <button id="call-btn" type="button" class="btn btn-primary btn-lg btn-block">Llamar siguiente</button>
+        </div>
+
+        <div id="panel-active" class="panel panel-active" hidden>
+          <p class="label">Ticket actual</p>
+          <p id="active-code" class="ticket-code">—</p>
+          <p id="active-meta" class="ticket-meta"></p>
+          <div class="actions">
+            <button id="recall-btn" type="button" class="btn btn-block">Repetir llamado</button>
+            <button id="transfer-counter-btn" type="button" class="btn btn-transfer btn-block" hidden>Derivar a ventanilla</button>
+            <button id="transfer-cashier-btn" type="button" class="btn btn-transfer btn-block" hidden>Derivar a caja</button>
+            <button id="transfer-origin-btn" type="button" class="btn btn-transfer btn-block" hidden>Devolver a RUAT</button>
+            <div class="actions-row">
+              <button id="finish-btn" type="button" class="btn btn-ok">Finalizar</button>
+              <button id="absent-btn" type="button" class="btn btn-warn">Ausente</button>
+            </div>
+            <button id="cancel-btn" type="button" class="btn btn-danger btn-block">Cancelar</button>
+          </div>
+        </div>
+
+        <p id="desk-msg" class="msg" hidden></p>
+
+        <div class="section-head">
+          <h2>Últimos turnos</h2>
+          <button id="refresh-btn" type="button" class="btn btn-ghost btn-sm">Actualizar</button>
+        </div>
+        <ul id="recent-list" class="list"></ul>
       </div>
-
-      <p id="desk-msg" class="msg" hidden></p>
-
-      <h2>Últimos turnos</h2>
-      <ul id="recent-list" class="list"></ul>
-      <button id="refresh-btn" type="button" class="btn-ghost full">Actualizar</button>
     </section>
   </div>
   <script src="/legacy/app.js"></script>
