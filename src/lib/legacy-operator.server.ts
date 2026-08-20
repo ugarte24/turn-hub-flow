@@ -432,11 +432,15 @@ export async function getOperatorState(supabase: Db, userId: string) {
           origin_service_point_id: myCalling.origin_service_point_id ?? null,
         }
       : null,
-    recent: list.slice(0, 12).map((t) => ({
+    // Misma cola del día que el panel moderno (hasta 20, con puesto y derivación)
+    dayTickets: list.slice(0, 20).map((t) => ({
       id: t.id,
       code: formatTicketCodeLegacy(t.code),
       status: t.status,
+      transfer_to: (t as { transfer_to?: string | null }).transfer_to ?? null,
       procedure: (t as { procedure?: { name?: string } | null }).procedure?.name ?? "—",
+      service_point:
+        (t as { service_point?: { name?: string } | null }).service_point?.name ?? null,
     })),
   };
 }

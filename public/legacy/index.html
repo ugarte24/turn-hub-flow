@@ -88,10 +88,23 @@
         <p id="desk-msg" class="msg" hidden></p>
 
         <div class="section-head">
-          <h2>Últimos turnos</h2>
+          <h2>Cola del día</h2>
           <button id="refresh-btn" type="button" class="btn btn-ghost btn-sm">Actualizar</button>
         </div>
-        <ul id="recent-list" class="list"></ul>
+        <div id="day-table-wrap" class="table-wrap">
+          <table class="day-table" id="day-table">
+            <thead>
+              <tr>
+                <th>Turno</th>
+                <th>Trámite</th>
+                <th>Estado</th>
+                <th>Puesto</th>
+              </tr>
+            </thead>
+            <tbody id="day-tbody"></tbody>
+          </table>
+        </div>
+        <p id="day-empty" class="day-empty" hidden>Sin turnos hoy</p>
       </main>
     </section>
   </div>

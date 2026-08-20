@@ -61,7 +61,7 @@
     });
   }
 
-  function statusLabel(s) {
+  function statusLabelShort(s) {
     if (s === "waiting") return "Espera";
     if (s === "calling") return "Llamando";
     if (s === "in_service") return "Atención";
@@ -69,6 +69,21 @@
     if (s === "absent") return "Ausente";
     if (s === "cancelled") return "Cancelado";
     return s || "—";
+  }
+
+  /** Misma lógica de StatusPill del panel moderno */
+  function statusPill(s, transferTo) {
+    if (s === "waiting" && transferTo === "counter") return { label: "A ventanilla", cls: "pill-warn" };
+    if (s === "waiting" && transferTo === "origin") return { label: "Vuelve al origen", cls: "pill-primary" };
+    if (s === "waiting" && transferTo === "ruat") return { label: "A RUAT / Jefe", cls: "pill-primary" };
+    if (s === "waiting" && transferTo === "cashier") return { label: "A caja", cls: "pill-warn" };
+    if (s === "waiting") return { label: "En espera", cls: "pill-muted" };
+    if (s === "calling") return { label: "Llamando", cls: "pill-warn" };
+    if (s === "in_service") return { label: "En atención", cls: "pill-primary" };
+    if (s === "finished") return { label: "Finalizado", cls: "pill-ok" };
+    if (s === "absent") return { label: "Ausente", cls: "pill-danger" };
+    if (s === "cancelled") return { label: "Cancelado", cls: "pill-danger" };
+    return { label: s || "—", cls: "pill-muted" };
   }
 
   function renderState(state) {
@@ -87,7 +102,7 @@
     var mine = state.myCalling;
     if (mine) {
       $("my-code").textContent = mine.displayCode || mine.code || "—";
-      $("my-status").textContent = statusLabel(mine.status);
+      $("my-status").textContent = statusLabelShort(mine.status);
       $("active-code").textContent = mine.displayCode || mine.code || "—";
       var meta = [];
       if (mine.area) meta.push(mine.area);
@@ -107,27 +122,37 @@
       show($("transfer-origin-btn"), false);
     }
 
-    var list = $("recent-list");
-    list.innerHTML = "";
-    var recent = state.recent || [];
-    if (!recent.length) {
-      var empty = document.createElement("li");
-      empty.textContent = "Sin turnos hoy";
-      list.appendChild(empty);
+    var tbody = $("day-tbody");
+    var emptyEl = $("day-empty");
+    var wrap = $("day-table-wrap");
+    tbody.innerHTML = "";
+    var dayTickets = state.dayTickets || state.recent || [];
+    if (!dayTickets.length) {
+      show(emptyEl, true);
+      show(wrap, false);
     } else {
-      for (var i = 0; i < recent.length; i++) {
-        var t = recent[i];
-        var li = document.createElement("li");
-        var left = document.createElement("span");
-        left.innerHTML = "<b>" + (t.code || "—") + "</b> · " + (t.procedure || "—");
-        var badge = document.createElement("span");
-        badge.className = "badge";
-        badge.textContent = statusLabel(t.status);
-        li.appendChild(left);
-        li.appendChild(badge);
-        list.appendChild(li);
+      show(emptyEl, false);
+      show(wrap, true);
+      for (var i = 0; i < dayTickets.length; i++) {
+        var t = dayTickets[i];
+        var pill = statusPill(t.status, t.transfer_to);
+        var tr = document.createElement("tr");
+        tr.innerHTML =
+          "<td class=\"col-code\">" + escapeHtml(t.code || "—") + "</td>" +
+          "<td>" + escapeHtml(t.procedure || "—") + "</td>" +
+          "<td><span class=\"pill " + pill.cls + "\">" + escapeHtml(pill.label) + "</span></td>" +
+          "<td class=\"col-muted\">" + escapeHtml(t.service_point || "—") + "</td>";
+        tbody.appendChild(tr);
       }
     }
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
   }
 
   function showLogin() {
