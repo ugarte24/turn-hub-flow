@@ -1,16 +1,20 @@
 /** Notificaciones del sistema + sonido (visibles en segundo plano). */
 
+import { isLegacyBrowser } from "@/lib/browser-compat";
+
 export type DesktopNotifyPermission = NotificationPermission | "unsupported";
 
 const SW_URL = "/notify-sw.js";
 
 export function getDesktopNotifyPermission(): DesktopNotifyPermission {
   if (typeof window === "undefined" || !("Notification" in window)) return "unsupported";
+  if (isLegacyBrowser()) return "unsupported";
   return Notification.permission;
 }
 
 export async function ensureDesktopNotifyPermission(): Promise<DesktopNotifyPermission> {
   if (typeof window === "undefined" || !("Notification" in window)) return "unsupported";
+  if (isLegacyBrowser()) return "unsupported";
   if (Notification.permission === "granted" || Notification.permission === "denied") {
     return Notification.permission;
   }
@@ -24,6 +28,7 @@ export async function ensureDesktopNotifyPermission(): Promise<DesktopNotifyPerm
 /** Registra el SW usado para mostrar toasts de Windows de forma más fiable. */
 export async function registerNotifyServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) return null;
+  if (isLegacyBrowser()) return null;
   try {
     return await navigator.serviceWorker.register(SW_URL, { scope: "/" });
   } catch {
@@ -65,6 +70,10 @@ export async function showDesktopNotify(opts: {
   withSound?: boolean;
 }): Promise<boolean> {
   if (typeof window === "undefined") return false;
+  if (isLegacyBrowser()) {
+    if (opts.withSound !== false) playNotifyBeep();
+    return false;
+  }
   if (opts.withSound !== false) playNotifyBeep();
 
   if (!("Notification" in window)) return false;
@@ -73,8 +82,6 @@ export async function showDesktopNotify(opts: {
   const options: NotificationOptions = {
     body: opts.body,
     tag: opts.tag ?? `sigat-${Date.now()}`,
-    renotify: true,
-    requireInteraction: true,
     icon: "/sigat-icon.png",
     badge: "/sigat-icon.png",
     silent: false,

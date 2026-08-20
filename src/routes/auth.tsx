@@ -66,8 +66,8 @@ function AuthPage() {
           <div className="mb-4 rounded-2xl border border-amber-300/50 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm">
             <p className="font-semibold">Navegador antiguo detectado (p. ej. Windows 7)</p>
             <p className="mt-1 leading-relaxed">
-              SIGAT puede no iniciar sesión o ir muy lento aquí. Usá <strong>Chrome o Edge actualizado en Windows 10/11</strong>.
-              Internet Explorer no es compatible.
+              El login puede funcionar, pero <strong>operar el sistema (llamar turnos, admin)</strong> requiere{" "}
+              <strong>Windows 10/11 con Chrome o Edge actualizado</strong>. Internet Explorer no es compatible.
             </p>
           </div>
         )}

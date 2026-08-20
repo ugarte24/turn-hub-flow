@@ -12,4 +12,14 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // Chrome 109 = último Chrome de Windows 7. Sin esto el panel suele romperse tras el login.
+  vite: {
+    build: {
+      target: ["chrome109", "firefox115", "safari15"],
+      cssTarget: "chrome109",
+    },
+    esbuild: {
+      target: "chrome109",
+    },
+  },
 });
