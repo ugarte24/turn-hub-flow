@@ -33,8 +33,10 @@ function printHostTicket(t: GeneratedTicket) {
   const area = t.area?.name ?? "—";
   const proc = t.procedure?.name ?? "—";
 
-  // Epson TM-T20III 80 mm. Contenido ~68 mm (deja margen al driver) y poco padding
-  // para no desperdiciar papel en blanco arriba/abajo.
+  // Plantilla conservadora para Epson TM-T20III / drivers Windows:
+  // - sin flex (suele desbordar)
+  // - una sola columna (nada se corta a la derecha)
+  // - código en Arial bold (la serif deformaba la "I")
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -46,8 +48,6 @@ function printHostTicket(t: GeneratedTicket) {
       margin: 0;
     }
     html, body {
-      width: 80mm;
-      height: auto;
       margin: 0;
       padding: 0;
       background: #fff;
@@ -58,23 +58,21 @@ function printHostTicket(t: GeneratedTicket) {
     }
     * { box-sizing: border-box; }
     .ticket {
-      width: 68mm;
-      max-width: 68mm;
+      width: 56mm;
+      max-width: 56mm;
       margin: 0 auto;
-      padding: 1mm 0 3mm;
+      padding: 1mm 0 2mm;
       text-align: center;
-      overflow: hidden;
     }
     .brand {
       font-size: 10px;
       font-weight: 700;
-      letter-spacing: 0.04em;
       text-transform: uppercase;
       line-height: 1.2;
     }
     .sub {
       font-size: 9px;
-      margin-top: 0.8mm;
+      margin-top: 1mm;
       line-height: 1.25;
     }
     .rule {
@@ -85,40 +83,29 @@ function printHostTicket(t: GeneratedTicket) {
     .label {
       font-size: 8px;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.06em;
     }
     .code {
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: 36px;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 40px;
       font-weight: 700;
-      line-height: 1;
-      margin: 1mm 0 1.5mm;
-      letter-spacing: 0.02em;
-      word-break: break-all;
-    }
-    .row {
-      display: table;
-      width: 100%;
-      table-layout: fixed;
-      font-size: 11px;
+      line-height: 1.05;
       margin: 1mm 0;
-      line-height: 1.25;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+    .meta {
       text-align: left;
+      font-size: 11px;
+      line-height: 1.35;
     }
-    .row .k {
-      display: table-cell;
-      width: 18mm;
-      vertical-align: top;
-      padding-right: 2mm;
-    }
-    .row .v {
-      display: table-cell;
-      vertical-align: top;
-      font-weight: 700;
-      text-align: right;
+    .meta div {
+      margin: 1.2mm 0;
       word-wrap: break-word;
       overflow-wrap: break-word;
-      word-break: break-word;
+    }
+    .meta b {
+      font-weight: 700;
     }
     .foot {
       font-size: 9px;
@@ -135,10 +122,12 @@ function printHostTicket(t: GeneratedTicket) {
     <div class="label">Número de turno</div>
     <div class="code">${codeHtml}</div>
     <hr class="rule" />
-    <div class="row"><span class="k">Área</span><span class="v">${escapeHtml(area)}</span></div>
-    <div class="row"><span class="k">Trámite</span><span class="v">${escapeHtml(proc)}</span></div>
-    <div class="row"><span class="k">Fecha</span><span class="v">${escapeHtml(fecha)}</span></div>
-    <div class="row"><span class="k">Hora</span><span class="v">${escapeHtml(hora)}</span></div>
+    <div class="meta">
+      <div>Área: <b>${escapeHtml(area)}</b></div>
+      <div>Trámite: <b>${escapeHtml(proc)}</b></div>
+      <div>Fecha: <b>${escapeHtml(fecha)}</b></div>
+      <div>Hora: <b>${escapeHtml(hora)}</b></div>
+    </div>
     <hr class="rule" />
     <div class="foot">Espere su llamado en la pantalla</div>
   </div>
