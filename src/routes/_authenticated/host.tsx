@@ -25,17 +25,16 @@ function printHostTicket(t: GeneratedTicket) {
   const code = formatTicketCode(t.code);
   const codeHtml = formatTicketCodeHtml(t.code);
   const created = t.created_at ? new Date(t.created_at) : new Date();
-  // Formato corto: evita que la fecha se corte en impresoras térmicas angostas.
   const dd = String(created.getDate()).padStart(2, "0");
   const mm = String(created.getMonth() + 1).padStart(2, "0");
-  const yy = String(created.getFullYear()).slice(-2);
-  const fecha = `${dd}/${mm}/${yy}`;
+  const yyyy = String(created.getFullYear());
+  const fecha = `${dd}/${mm}/${yyyy}`;
   const hora = created.toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit", hour12: false });
   const area = t.area?.name ?? "—";
   const proc = t.procedure?.name ?? "—";
 
-  // Epson TM-T20III 80 mm: el driver de Windows suele comer márgenes laterales.
-  // Diseñamos a ~64 mm de contenido para que Área/Trámite/Fecha no se corten.
+  // Epson TM-T20III 80 mm. Contenido ~68 mm (deja margen al driver) y poco padding
+  // para no desperdiciar papel en blanco arriba/abajo.
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -48,6 +47,7 @@ function printHostTicket(t: GeneratedTicket) {
     }
     html, body {
       width: 80mm;
+      height: auto;
       margin: 0;
       padding: 0;
       background: #fff;
@@ -58,29 +58,29 @@ function printHostTicket(t: GeneratedTicket) {
     }
     * { box-sizing: border-box; }
     .ticket {
-      width: 64mm;
-      max-width: 64mm;
+      width: 68mm;
+      max-width: 68mm;
       margin: 0 auto;
-      padding: 2mm 0 8mm;
+      padding: 1mm 0 3mm;
       text-align: center;
       overflow: hidden;
     }
     .brand {
-      font-size: 9px;
+      font-size: 10px;
       font-weight: 700;
       letter-spacing: 0.04em;
       text-transform: uppercase;
-      line-height: 1.25;
+      line-height: 1.2;
     }
     .sub {
-      font-size: 8px;
-      margin-top: 1mm;
-      line-height: 1.3;
+      font-size: 9px;
+      margin-top: 0.8mm;
+      line-height: 1.25;
     }
     .rule {
       border: none;
       border-top: 1px dashed #000;
-      margin: 2.5mm 0;
+      margin: 2mm 0;
     }
     .label {
       font-size: 8px;
@@ -89,10 +89,10 @@ function printHostTicket(t: GeneratedTicket) {
     }
     .code {
       font-family: Georgia, "Times New Roman", serif;
-      font-size: 34px;
+      font-size: 36px;
       font-weight: 700;
-      line-height: 1.05;
-      margin: 1.5mm 0 2mm;
+      line-height: 1;
+      margin: 1mm 0 1.5mm;
       letter-spacing: 0.02em;
       word-break: break-all;
     }
@@ -100,9 +100,9 @@ function printHostTicket(t: GeneratedTicket) {
       display: table;
       width: 100%;
       table-layout: fixed;
-      font-size: 10px;
-      margin: 1.2mm 0;
-      line-height: 1.3;
+      font-size: 11px;
+      margin: 1mm 0;
+      line-height: 1.25;
       text-align: left;
     }
     .row .k {
@@ -121,9 +121,9 @@ function printHostTicket(t: GeneratedTicket) {
       word-break: break-word;
     }
     .foot {
-      font-size: 8px;
-      margin-top: 1.5mm;
-      line-height: 1.3;
+      font-size: 9px;
+      margin-top: 1mm;
+      line-height: 1.25;
     }
   </style>
 </head>
