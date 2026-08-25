@@ -25,20 +25,22 @@ function printHostTicket(t: GeneratedTicket) {
   const code = formatTicketCode(t.code);
   const codeHtml = formatTicketCodeHtml(t.code);
   const created = t.created_at ? new Date(t.created_at) : new Date();
-  const fecha = created.toLocaleDateString("es-BO");
-  const hora = created.toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit" });
+  // Formato corto: evita que la fecha se corte en impresoras térmicas angostas.
+  const dd = String(created.getDate()).padStart(2, "0");
+  const mm = String(created.getMonth() + 1).padStart(2, "0");
+  const yy = String(created.getFullYear()).slice(-2);
+  const fecha = `${dd}/${mm}/${yy}`;
+  const hora = created.toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit", hour12: false });
   const area = t.area?.name ?? "—";
   const proc = t.procedure?.name ?? "—";
 
-  // Epson TM-T20III: rollo 80 mm (79.5±0.5), área imprimible 72.1 mm (576 dots).
+  // Epson TM-T20III 80 mm: el driver de Windows suele comer márgenes laterales.
+  // Diseñamos a ~64 mm de contenido para que Área/Trámite/Fecha no se corten.
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
   <title>Ticket ${code}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@700;900&display=swap" rel="stylesheet" />
   <style>
     @page {
       size: 80mm auto;
@@ -56,67 +58,71 @@ function printHostTicket(t: GeneratedTicket) {
     }
     * { box-sizing: border-box; }
     .ticket {
-      width: 72mm;
-      max-width: 72mm;
+      width: 64mm;
+      max-width: 64mm;
       margin: 0 auto;
-      padding: 3mm 1mm 10mm;
+      padding: 2mm 0 8mm;
       text-align: center;
+      overflow: hidden;
     }
     .brand {
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 700;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.04em;
       text-transform: uppercase;
       line-height: 1.25;
     }
     .sub {
-      font-size: 9px;
-      margin-top: 1.5mm;
+      font-size: 8px;
+      margin-top: 1mm;
       line-height: 1.3;
     }
     .rule {
       border: none;
       border-top: 1px dashed #000;
-      margin: 3mm 0;
+      margin: 2.5mm 0;
     }
     .label {
-      font-size: 9px;
+      font-size: 8px;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.08em;
     }
     .code {
-      font-family: "Roboto Slab", Georgia, "Times New Roman", serif;
-      font-size: 36px;
-      font-weight: 900;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 34px;
+      font-weight: 700;
       line-height: 1.05;
-      margin: 2mm 0 3mm;
-      letter-spacing: 0.03em;
+      margin: 1.5mm 0 2mm;
+      letter-spacing: 0.02em;
       word-break: break-all;
-      font-variant-numeric: lining-nums;
     }
     .row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 2mm;
-      font-size: 11px;
-      margin: 1.5mm 0;
+      display: table;
+      width: 100%;
+      table-layout: fixed;
+      font-size: 10px;
+      margin: 1.2mm 0;
+      line-height: 1.3;
       text-align: left;
-      line-height: 1.25;
     }
-    .row span:first-child {
-      flex: 0 0 auto;
-      opacity: 0.9;
+    .row .k {
+      display: table-cell;
+      width: 18mm;
+      vertical-align: top;
+      padding-right: 2mm;
     }
-    .row span:last-child {
-      flex: 1 1 auto;
+    .row .v {
+      display: table-cell;
+      vertical-align: top;
       font-weight: 700;
       text-align: right;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
       word-break: break-word;
     }
     .foot {
-      font-size: 9px;
-      margin-top: 2mm;
+      font-size: 8px;
+      margin-top: 1.5mm;
       line-height: 1.3;
     }
   </style>
@@ -129,10 +135,10 @@ function printHostTicket(t: GeneratedTicket) {
     <div class="label">Número de turno</div>
     <div class="code">${codeHtml}</div>
     <hr class="rule" />
-    <div class="row"><span>Área</span><span>${escapeHtml(area)}</span></div>
-    <div class="row"><span>Trámite</span><span>${escapeHtml(proc)}</span></div>
-    <div class="row"><span>Fecha</span><span>${escapeHtml(fecha)}</span></div>
-    <div class="row"><span>Hora</span><span>${escapeHtml(hora)}</span></div>
+    <div class="row"><span class="k">Área</span><span class="v">${escapeHtml(area)}</span></div>
+    <div class="row"><span class="k">Trámite</span><span class="v">${escapeHtml(proc)}</span></div>
+    <div class="row"><span class="k">Fecha</span><span class="v">${escapeHtml(fecha)}</span></div>
+    <div class="row"><span class="k">Hora</span><span class="v">${escapeHtml(hora)}</span></div>
     <hr class="rule" />
     <div class="foot">Espere su llamado en la pantalla</div>
   </div>
