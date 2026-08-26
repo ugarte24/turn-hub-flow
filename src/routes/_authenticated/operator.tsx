@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchServicePoints, fetchTodayTickets } from "@/lib/sigat-queries";
+import { fetchOperatorTickets, fetchServicePoints } from "@/lib/sigat-queries";
 import {
   callNextTicket,
   returnTicketToOrigin,
@@ -63,8 +63,12 @@ function OperatorPage() {
   const qc = useQueryClient();
   const [notifyPerm, setNotifyPerm] = useState<DesktopNotifyPermission>(() => getDesktopNotifyPermission());
 
-  const sps = useQuery({ queryKey: ["service_points"], queryFn: fetchServicePoints });
-  const tickets = useQuery({ queryKey: ["today_tickets"], queryFn: fetchTodayTickets, refetchInterval: 3000 });
+  const sps = useQuery({ queryKey: ["service_points"], queryFn: fetchServicePoints, staleTime: 60_000 });
+  const tickets = useQuery({
+    queryKey: ["today_tickets"],
+    queryFn: fetchOperatorTickets,
+    staleTime: 30_000,
+  });
 
   const callFn = useServerFn(callNextTicket);
   const upFn = useServerFn(updateTicketStatus);

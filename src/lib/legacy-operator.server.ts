@@ -354,32 +354,59 @@ export async function returnToOriginLegacy(supabase: Db, userId: string, ticketI
 export async function getOperatorState(supabase: Db, userId: string) {
   const assigned = await findAssignedServicePoint(supabase, userId);
   const today = todayLaPaz();
+  const spId = assigned?.id ?? null;
+  const kind = assigned ? resolveSpKind(assigned as { kind?: string | null; name: string }) : "standard";
 
-  const [{ data: tickets }, { data: roleRows }, { data: userData }] = await Promise.all([
-    supabase
-      .from("tickets")
-      .select("*, area:areas(*), procedure:procedures(*), service_point:service_points!service_point_id(*)")
-      .eq("day", today)
-      .order("created_at", { ascending: false }),
-    supabase.from("user_roles").select("role").eq("user_id", userId),
-    supabase.auth.getUser(),
-  ]);
+  const activeSelect =
+    "id, code, ci, status, origin_service_point_id, area:areas(name), procedure:procedures(name)";
+  const recentSelect =
+    "id, code, status, transfer_to, procedure:procedures(name), service_point:service_points!service_point_id(name)";
 
-  const list = tickets ?? [];
+  const [{ data: waitingRows }, { data: myCallingRows }, { data: recentRows }, { data: roleRows }, { data: userData }] =
+    await Promise.all([
+      spId
+        ? supabase
+            .from("tickets")
+            .select("id, status, transfer_to, origin_service_point_id, code")
+            .eq("day", today)
+            .eq("status", "waiting")
+        : Promise.resolve({ data: [] as { id: string; status: string; transfer_to: string | null; origin_service_point_id: string | null; code: string }[] }),
+      spId
+        ? supabase
+            .from("tickets")
+            .select(activeSelect)
+            .eq("day", today)
+            .eq("service_point_id", spId)
+            .eq("operator_id", userId)
+            .in("status", ["calling", "in_service"])
+            .limit(1)
+        : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+      supabase
+        .from("tickets")
+        .select(recentSelect)
+        .eq("day", today)
+        .order("created_at", { ascending: false })
+        .limit(20),
+      supabase.from("user_roles").select("role").eq("user_id", userId),
+      supabase.auth.getUser(),
+    ]);
+
+  const waiting = waitingRows ?? [];
+  const myCalling = (myCallingRows?.[0] ?? null) as {
+    id: string;
+    code: string;
+    ci: string | null;
+    status: string;
+    origin_service_point_id: string | null;
+    area?: { name?: string } | null;
+    procedure?: { name?: string } | null;
+  } | null;
+  const recent = recentRows ?? [];
   const roles = (roleRows ?? []).map((r) => r.role);
   const email = userData.user?.email ?? null;
-  const myCalling =
-    list.find(
-      (t) =>
-        t.service_point_id === assigned?.id &&
-        t.operator_id === userId &&
-        (t.status === "calling" || t.status === "in_service"),
-    ) ?? null;
 
-  const kind = assigned ? resolveSpKind(assigned as { kind?: string | null; name: string }) : "standard";
   let queueCount = 0;
   if (assigned) {
-    const waiting = list.filter((t) => t.status === "waiting");
     if (kind === "counter") {
       queueCount = waiting.filter((t) => t.transfer_to === "counter").length;
     } else if (kind === "cashier") {
@@ -441,13 +468,12 @@ export async function getOperatorState(supabase: Db, userId: string) {
           displayCode: formatTicketCodeLegacy(myCalling.code),
           status: myCalling.status,
           ci: myCalling.ci ?? null,
-          area: (myCalling as { area?: { name?: string } | null }).area?.name ?? null,
-          procedure: (myCalling as { procedure?: { name?: string } | null }).procedure?.name ?? null,
+          area: myCalling.area?.name ?? null,
+          procedure: myCalling.procedure?.name ?? null,
           origin_service_point_id: myCalling.origin_service_point_id ?? null,
         }
       : null,
-    // Misma cola del día que el panel moderno (hasta 20, con puesto y derivación)
-    dayTickets: list.slice(0, 20).map((t) => ({
+    dayTickets: recent.map((t) => ({
       id: t.id,
       code: formatTicketCodeLegacy(t.code),
       status: t.status,

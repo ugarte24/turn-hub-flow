@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchTodayTickets } from "@/lib/sigat-queries";
+import { fetchDisplayTickets } from "@/lib/sigat-queries";
 import { speakTicketCode, TicketCodeView } from "@/lib/ticket-code";
 import { speakTvUtterance, DEFAULT_TV_VOICE, parseTvVoiceSettings, waitForSpeechVoices, type TvVoiceSettings } from "@/lib/tv-voice";
 import { Volume2, ArrowRight } from "lucide-react";
@@ -321,14 +321,17 @@ function DisplayPage() {
   useEffect(() => {
     let mounted = true;
     async function loadTickets() {
-      const data = await fetchTodayTickets();
+      const data = await fetchDisplayTickets();
       if (mounted) {
         setTickets(data as TicketRow[]);
         setTicketsReady(true);
       }
     }
     async function loadSettings() {
-      const { data } = await supabase.from("settings").select("*");
+      const { data } = await supabase
+        .from("settings")
+        .select("key, value")
+        .in("key", ["tv_display", "sound"]);
       if (!mounted || !data) return;
       const tvRow = data.find((r) => r.key === "tv_display")?.value as Record<string, unknown> | undefined;
       const soundRow = data.find((r) => r.key === "sound")?.value as Record<string, unknown> | undefined;
@@ -348,13 +351,17 @@ function DisplayPage() {
       .channel("tv-tickets")
       .on("postgres_changes", { event: "*", schema: "public", table: "tickets" }, () => loadTickets())
       .subscribe();
-    const pollTickets = setInterval(loadTickets, 2500);
-    const pollSettings = setInterval(loadSettings, 15000);
+    const settingsChannel = supabase
+      .channel("tv-settings")
+      .on("postgres_changes", { event: "*", schema: "public", table: "settings" }, () => loadSettings())
+      .subscribe();
+    // Respaldo lento por si Realtime se desconecta (p. ej. WiFi inestable en la TV)
+    const pollFallback = setInterval(loadTickets, 60_000);
     return () => {
       mounted = false;
       supabase.removeChannel(ticketsChannel);
-      clearInterval(pollTickets);
-      clearInterval(pollSettings);
+      supabase.removeChannel(settingsChannel);
+      clearInterval(pollFallback);
     };
   }, []);
 

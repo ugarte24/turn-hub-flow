@@ -3,7 +3,7 @@ import { useMemo, useEffect } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchServicePoints, fetchTodayRatings, fetchTodayTickets } from "@/lib/sigat-queries";
+import { fetchAdminDashboardTickets, fetchServicePoints, fetchTodayRatings } from "@/lib/sigat-queries";
 import { resetDailyCounters } from "@/lib/sigat.functions";
 import { Ticket, Users2, Clock, CheckCircle2, UserX, TrendingUp, RotateCcw, Star } from "lucide-react";
 import { toast } from "sonner";
@@ -18,9 +18,13 @@ type T = { id: string; status: string; procedure_id: string; service_point_id: s
 
 function AdminDashboard() {
   const qc = useQueryClient();
-  const tickets = useQuery({ queryKey: ["today_tickets"], queryFn: fetchTodayTickets, refetchInterval: 5000 });
-  const ratings = useQuery({ queryKey: ["today_ratings"], queryFn: fetchTodayRatings });
-  const sps = useQuery({ queryKey: ["service_points"], queryFn: fetchServicePoints });
+  const tickets = useQuery({
+    queryKey: ["today_tickets"],
+    queryFn: fetchAdminDashboardTickets,
+    staleTime: 30_000,
+  });
+  const ratings = useQuery({ queryKey: ["today_ratings"], queryFn: fetchTodayRatings, staleTime: 60_000 });
+  const sps = useQuery({ queryKey: ["service_points"], queryFn: fetchServicePoints, staleTime: 60_000 });
   const resetFn = useServerFn(resetDailyCounters);
 
   useEffect(() => {

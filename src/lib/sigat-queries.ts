@@ -57,6 +57,46 @@ export async function fetchTodayTickets() {
   return data ?? [];
 }
 
+/** Pantalla TV: solo estados visibles y columnas mínimas (menos egress). */
+export async function fetchDisplayTickets() {
+  const today = todayLaPaz();
+  const { data } = await supabase
+    .from("tickets")
+    .select(
+      "id, code, status, called_at, created_at, preferential, service_point:service_points!service_point_id(name)",
+    )
+    .eq("day", today)
+    .in("status", ["waiting", "calling", "in_service"])
+    .order("created_at", { ascending: false });
+  return data ?? [];
+}
+
+/** Operador: columnas necesarias sin traer todo el registro. */
+export async function fetchOperatorTickets() {
+  const today = todayLaPaz();
+  const { data } = await supabase
+    .from("tickets")
+    .select(
+      "id, code, ci, status, created_at, called_at, service_point_id, operator_id, origin_service_point_id, origin_operator_id, transfer_to, area:areas(name), procedure:procedures(name), service_point:service_points!service_point_id(name, kind)",
+    )
+    .eq("day", today)
+    .order("created_at", { ascending: false });
+  return data ?? [];
+}
+
+/** Dashboard admin: métricas del día sin payload completo. */
+export async function fetchAdminDashboardTickets() {
+  const today = todayLaPaz();
+  const { data } = await supabase
+    .from("tickets")
+    .select(
+      "id, status, procedure_id, service_point_id, started_at, finished_at, procedure:procedures(name), service_point:service_points!service_point_id(name)",
+    )
+    .eq("day", today)
+    .order("created_at", { ascending: false });
+  return data ?? [];
+}
+
 export type TicketRatingRow = {
   id: string;
   ticket_id: string;

@@ -263,7 +263,7 @@
     setMenuOpen(false);
     refresh();
     if (pollTimer) clearInterval(pollTimer);
-    pollTimer = setInterval(refresh, 4000);
+    pollTimer = setInterval(refresh, 20_000);
   }
 
   function refresh() {
