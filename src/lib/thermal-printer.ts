@@ -1,49 +1,27 @@
-/** Config e impresión térmica por red (ZKP8008 ESC/POS). */
+/** Config e impresión térmica vía RawBT (Android) — ESC/POS con corte. */
 
-import {
-  base64ToUint8,
-  buildTicketEscPos,
-  uint8ToBase64,
-  type EscPosTicketData,
-} from "@/lib/escpos-ticket";
+import { buildTicketEscPos, uint8ToBase64, type EscPosTicketData } from "@/lib/escpos-ticket";
 
 export type ThermalPrinterSettings = {
   enabled: boolean;
-  /** IP de la ZKP8008 en la LAN, ej. 192.168.1.50 */
-  host: string;
-  /** Puerto Raw (casi siempre 9100) */
-  port: number;
-  /** Corte automático al final */
+  /** Corte automático al final (comando ESC/POS) */
   autoCut: boolean;
   /** Imprimir al generar turno en Host */
   autoPrint: boolean;
-  /**
-   * URL del agente local en la oficina, ej. http://192.168.1.10:8787
-   * El celular/PC en la WiFi llama al agente; el agente habla TCP con la impresora.
-   * Necesario si SIGAT está en Vercel (la nube no llega a la LAN).
-   */
-  agentUrl: string;
 };
 
 export const DEFAULT_THERMAL_PRINTER: ThermalPrinterSettings = {
   enabled: false,
-  host: "",
-  port: 9100,
   autoCut: true,
   autoPrint: true,
-  agentUrl: "",
 };
 
 export function parseThermalPrinterSettings(raw: unknown): ThermalPrinterSettings {
   const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  const port = Number(o.port);
   return {
     enabled: o.enabled === true,
-    host: typeof o.host === "string" ? o.host.trim() : "",
-    port: Number.isFinite(port) && port > 0 && port < 65536 ? port : 9100,
     autoCut: o.autoCut !== false,
     autoPrint: o.autoPrint !== false,
-    agentUrl: typeof o.agentUrl === "string" ? o.agentUrl.trim().replace(/\/$/, "") : "",
   };
 }
 
@@ -96,72 +74,34 @@ function isAndroid(): boolean {
   return /Android/i.test(navigator.userAgent);
 }
 
-/** Abre RawBT (Android) con el payload ESC/POS en base64. */
-function printViaRawBt(bytes: Uint8Array): boolean {
-  if (!isAndroid()) return false;
-  try {
-    const b64 = uint8ToBase64(bytes);
-    // RawBT: scheme rawbt + base64 del job
-    const url =
-      "intent:base64," +
-      encodeURIComponent(b64) +
-      "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end";
-    window.location.href = url;
-    return true;
-  } catch {
-    return false;
-  }
-}
+/**
+ * RawBT espera: rawbt:base64,<data> (sin encodeURIComponent: rompe +/ → "wrong base64").
+ * En Chrome Android: intent:base64,<data>#Intent;scheme=rawbt;package=...;end;
+ * Usar setAttribute('href') — asignar a.href percent-encodea + y /.
+ */
+function printViaRawBt(bytes: Uint8Array): void {
+  const b64 = uint8ToBase64(bytes);
+  const rawbtUrl = `rawbt:base64,${b64}`;
+  const intentUrl =
+    `intent:base64,${b64}` +
+    "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
+  // En Android Chrome el Intent es el más fiable; rawbt: directo en el resto
+  const url = isAndroid() ? intentUrl : rawbtUrl;
 
-async function printViaAgent(
-  agentUrl: string,
-  settings: ThermalPrinterSettings,
-  bytes: Uint8Array,
-): Promise<void> {
-  const res = await fetch(`${agentUrl}/print`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      host: settings.host,
-      port: settings.port,
-      data: uint8ToBase64(bytes),
-    }),
-  });
-  if (!res.ok) {
-    let msg = `Agente HTTP ${res.status}`;
-    try {
-      const j = (await res.json()) as { error?: string };
-      if (j.error) msg = j.error;
-    } catch {
-      /* ignore */
-    }
-    throw new Error(msg);
-  }
-}
-
-async function printViaApi(settings: ThermalPrinterSettings, bytes: Uint8Array): Promise<void> {
-  const res = await fetch("/api/print/escpos", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      host: settings.host,
-      port: settings.port,
-      data: uint8ToBase64(bytes),
-    }),
-  });
-  const j = (await res.json().catch(() => ({}))) as { error?: string; ok?: boolean };
-  if (!res.ok || j.error) {
-    throw new Error(j.error || `Error HTTP ${res.status}`);
-  }
+  const a = document.createElement("a");
+  a.setAttribute("href", url);
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 export type ThermalPrintResult = {
-  method: "agent" | "api" | "rawbt";
+  method: "rawbt";
 };
 
 /**
- * Imprime por red con corte.
- * Orden: agente local (LAN) → API servidor → RawBT (Android).
+ * Imprime por RawBT (Android). La impresora se configura dentro de la app RawBT (IP/BT/USB).
  */
 export async function printTicketThermal(
   t: TicketPrintInput,
@@ -170,32 +110,13 @@ export async function printTicketThermal(
   if (!settings.enabled) {
     throw new Error("La impresora térmica no está habilitada en Configuración");
   }
+  if (!isAndroid()) {
+    throw new Error(
+      "La impresión ESC/POS con RawBT solo funciona en Android. En PC usá el diálogo de impresión del navegador.",
+    );
+  }
 
   const bytes = buildEscPosForTicket(t, settings);
-
-  if (settings.agentUrl) {
-    await printViaAgent(settings.agentUrl, settings, bytes);
-    return { method: "agent" };
-  }
-
-  if (settings.host) {
-    try {
-      await printViaApi(settings, bytes);
-      return { method: "api" };
-    } catch (e) {
-      // Si la API falla (típico en Vercel → LAN) y hay Android, RawBT
-      if (printViaRawBt(bytes)) return { method: "rawbt" };
-      throw e;
-    }
-  }
-
-  if (printViaRawBt(bytes)) return { method: "rawbt" };
-
-  throw new Error(
-    "Configurá la IP de la impresora o la URL del agente local (PC en la oficina).",
-  );
-}
-
-export function bytesFromBase64(b64: string): Uint8Array {
-  return base64ToUint8(b64);
+  printViaRawBt(bytes);
+  return { method: "rawbt" };
 }

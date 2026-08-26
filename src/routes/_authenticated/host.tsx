@@ -254,7 +254,7 @@ function HostForm({ userId }: { userId: string }) {
     try {
       if (thermal.enabled) {
         const code = formatTicketCode(t.code);
-        const result = await printTicketThermal(
+        await printTicketThermal(
           {
             code,
             area: t.area?.name,
@@ -263,18 +263,12 @@ function HostForm({ userId }: { userId: string }) {
           },
           thermal,
         );
-        const via =
-          result.method === "agent"
-            ? "agente local"
-            : result.method === "rawbt"
-              ? "RawBT"
-              : "servidor";
-        toast.success(`Ticket ${code} enviado (${via})`);
+        toast.success(`Ticket ${code} enviado a RawBT`);
       } else {
         printHostTicket(t);
       }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "No se pudo imprimir por red";
+      const msg = e instanceof Error ? e.message : "No se pudo imprimir";
       toast.error(msg);
       // Fallback al diálogo del navegador
       try {
@@ -527,7 +521,7 @@ function HostForm({ userId }: { userId: string }) {
                   {printing
                     ? "Imprimiendo..."
                     : thermal.enabled
-                      ? "Imprimir (térmica / red)"
+                      ? "Imprimir (RawBT)"
                       : "Imprimir ticket"}
                 </button>
                 <button

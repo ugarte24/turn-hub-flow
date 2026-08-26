@@ -28,7 +28,6 @@ import { Route as ApiLegacyLoginRouteImport } from './routes/api/legacy/login'
 import { Route as ApiLegacyStateRouteImport } from './routes/api/legacy/state'
 import { Route as ApiLegacyTicketStatusRouteImport } from './routes/api/legacy/ticket-status'
 import { Route as ApiLegacyTransferRouteImport } from './routes/api/legacy/transfer'
-import { Route as ApiPrintEscposRouteImport } from './routes/api/print/escpos'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -127,11 +126,6 @@ const ApiLegacyTransferRoute = ApiLegacyTransferRouteImport.update({
   path: '/api/legacy/transfer',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPrintEscposRoute = ApiPrintEscposRouteImport.update({
-  id: '/api/print/escpos',
-  path: '/api/print/escpos',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -151,7 +145,6 @@ export interface FileRoutesByFullPath {
   '/api/legacy/state': typeof ApiLegacyStateRoute
   '/api/legacy/ticket-status': typeof ApiLegacyTicketStatusRoute
   '/api/legacy/transfer': typeof ApiLegacyTransferRoute
-  '/api/print/escpos': typeof ApiPrintEscposRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesByTo {
@@ -171,7 +164,6 @@ export interface FileRoutesByTo {
   '/api/legacy/state': typeof ApiLegacyStateRoute
   '/api/legacy/ticket-status': typeof ApiLegacyTicketStatusRoute
   '/api/legacy/transfer': typeof ApiLegacyTransferRoute
-  '/api/print/escpos': typeof ApiPrintEscposRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesById {
@@ -194,7 +186,6 @@ export interface FileRoutesById {
   '/api/legacy/state': typeof ApiLegacyStateRoute
   '/api/legacy/ticket-status': typeof ApiLegacyTicketStatusRoute
   '/api/legacy/transfer': typeof ApiLegacyTransferRoute
-  '/api/print/escpos': typeof ApiPrintEscposRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRouteTypes {
@@ -217,7 +208,6 @@ export interface FileRouteTypes {
     | '/api/legacy/state'
     | '/api/legacy/ticket-status'
     | '/api/legacy/transfer'
-    | '/api/print/escpos'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -237,7 +227,6 @@ export interface FileRouteTypes {
     | '/api/legacy/state'
     | '/api/legacy/ticket-status'
     | '/api/legacy/transfer'
-    | '/api/print/escpos'
     | '/admin'
   id:
     | '__root__'
@@ -259,7 +248,6 @@ export interface FileRouteTypes {
     | '/api/legacy/state'
     | '/api/legacy/ticket-status'
     | '/api/legacy/transfer'
-    | '/api/print/escpos'
     | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
 }
@@ -275,7 +263,6 @@ export interface RootRouteChildren {
   ApiLegacyStateRoute: typeof ApiLegacyStateRoute
   ApiLegacyTicketStatusRoute: typeof ApiLegacyTicketStatusRoute
   ApiLegacyTransferRoute: typeof ApiLegacyTransferRoute
-  ApiPrintEscposRoute: typeof ApiPrintEscposRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -413,13 +400,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiLegacyTransferRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/print/escpos': {
-      id: '/api/print/escpos'
-      path: '/api/print/escpos'
-      fullPath: '/api/print/escpos'
-      preLoaderRoute: typeof ApiPrintEscposRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -469,7 +449,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLegacyStateRoute: ApiLegacyStateRoute,
   ApiLegacyTicketStatusRoute: ApiLegacyTicketStatusRoute,
   ApiLegacyTransferRoute: ApiLegacyTransferRoute,
-  ApiPrintEscposRoute: ApiPrintEscposRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

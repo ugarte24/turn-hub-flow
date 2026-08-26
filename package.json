@@ -1,6 +1,6 @@
 {
   "name": "tanstack_start_ts",
-  "version": "1.0.92",
+  "version": "1.0.93",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -12,7 +12,6 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "version:bump": "node scripts/bump-version.mjs",
-    "print-agent": "node scripts/sigat-print-agent.mjs",
     "prepare": "node -e \"try{require('child_process').execSync('git config core.hooksPath .githooks',{stdio:'ignore'})}catch(e){}\""
   },
   "dependencies": {

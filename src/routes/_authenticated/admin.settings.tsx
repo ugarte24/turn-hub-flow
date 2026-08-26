@@ -152,11 +152,8 @@ function SettingsPage() {
         key: "thermal_printer",
         value: {
           enabled: thermal.enabled,
-          host: thermal.host.trim(),
-          port: thermal.port || 9100,
           autoCut: thermal.autoCut,
           autoPrint: thermal.autoPrint,
-          agentUrl: thermal.agentUrl.trim().replace(/\/$/, ""),
         },
       },
     ];
@@ -368,42 +365,17 @@ function SettingsPage() {
           </p>
         </Card>
 
-        <Card title="Impresora térmica (ZKP8008 / ESC-POS)">
+        <Card title="Impresora térmica (RawBT / Android)">
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
               checked={thermal.enabled}
               onChange={(e) => setThermal((t) => ({ ...t, enabled: e.target.checked }))}
             />
-            Usar impresión por red (rápida, con corte)
+            Usar RawBT en Android (rápida, con corte)
           </label>
           {thermal.enabled && (
             <>
-              <Field label="IP de la impresora">
-                <input
-                  value={thermal.host}
-                  onChange={(e) => setThermal((t) => ({ ...t, host: e.target.value }))}
-                  className="input"
-                  placeholder="192.168.1.50"
-                />
-              </Field>
-              <Field label="Puerto Raw">
-                <input
-                  type="number"
-                  value={thermal.port}
-                  onChange={(e) => setThermal((t) => ({ ...t, port: Number(e.target.value) || 9100 }))}
-                  className="input"
-                  placeholder="9100"
-                />
-              </Field>
-              <Field label="URL del agente local (recomendado con Vercel / celular)">
-                <input
-                  value={thermal.agentUrl}
-                  onChange={(e) => setThermal((t) => ({ ...t, agentUrl: e.target.value }))}
-                  className="input"
-                  placeholder="http://192.168.1.10:8787"
-                />
-              </Field>
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
@@ -423,11 +395,9 @@ function SettingsPage() {
               <p className="flex items-start gap-2 rounded-lg bg-accent/50 p-3 text-xs text-muted-foreground">
                 <Printer className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span>
-                  En una PC de la oficina ejecutá{" "}
-                  <code className="rounded bg-background px-1">node scripts/sigat-print-agent.mjs</code>
-                  {" "}con <code className="rounded bg-background px-1">PRINTER_HOST=IP_IMPRESORA</code>.
-                  Poné la URL del agente arriba (ej. http://IP-PC:8787). Así el celular en la WiFi imprime y corta.
-                  En Android también podés usar la app RawBT si no hay agente.
+                  Instalá la app <strong>RawBT</strong> en el celular Android y configurá ahí la ZKP8008
+                  (IP / Bluetooth / USB). SIGAT le envía el ticket ESC/POS directo; no hace falta agente.
+                  En PC se sigue usando el diálogo de impresión del navegador.
                 </span>
               </p>
             </>

@@ -101,10 +101,10 @@ export function buildTicketEscPos(data: EscPosTicketData): Uint8Array {
 }
 
 export function uint8ToBase64(bytes: Uint8Array): string {
+  // btoa sin saltos de línea (equivalente a Base64.NO_WRAP de Android)
   let binary = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]!);
   }
   return btoa(binary);
 }
