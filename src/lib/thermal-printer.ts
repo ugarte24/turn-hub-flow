@@ -6,14 +6,11 @@ export type ThermalPrinterSettings = {
   enabled: boolean;
   /** Corte automático al final (comando ESC/POS) */
   autoCut: boolean;
-  /** Imprimir al generar turno en Host */
-  autoPrint: boolean;
 };
 
 export const DEFAULT_THERMAL_PRINTER: ThermalPrinterSettings = {
   enabled: false,
   autoCut: true,
-  autoPrint: true,
 };
 
 export function parseThermalPrinterSettings(raw: unknown): ThermalPrinterSettings {
@@ -21,7 +18,6 @@ export function parseThermalPrinterSettings(raw: unknown): ThermalPrinterSetting
   return {
     enabled: o.enabled === true,
     autoCut: o.autoCut !== false,
-    autoPrint: o.autoPrint !== false,
   };
 }
 

@@ -153,7 +153,6 @@ function SettingsPage() {
         value: {
           enabled: thermal.enabled,
           autoCut: thermal.autoCut,
-          autoPrint: thermal.autoPrint,
         },
       },
     ];
@@ -384,20 +383,12 @@ function SettingsPage() {
                 />
                 Cortar papel al final
               </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={thermal.autoPrint}
-                  onChange={(e) => setThermal((t) => ({ ...t, autoPrint: e.target.checked }))}
-                />
-                Imprimir automáticamente al generar turno
-              </label>
               <p className="flex items-start gap-2 rounded-lg bg-accent/50 p-3 text-xs text-muted-foreground">
                 <Printer className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span>
                   Instalá la app <strong>RawBT</strong> en el celular Android y configurá ahí la ZKP8008
-                  (IP / Bluetooth / USB). SIGAT le envía el ticket ESC/POS directo; no hace falta agente.
-                  En PC se sigue usando el diálogo de impresión del navegador.
+                  (IP / Bluetooth / USB). RawBT se abre solo al tocar <strong>Imprimir</strong>, no al
+                  generar el turno. En PC se usa el diálogo del navegador.
                 </span>
               </p>
             </>

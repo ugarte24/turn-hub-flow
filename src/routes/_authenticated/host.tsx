@@ -321,9 +321,6 @@ function HostForm({ userId }: { userId: string }) {
       setProcedureId(null);
       setPreferential(false);
       void qc.invalidateQueries({ queryKey: ["host_recent_tickets"] });
-      if (thermal.enabled && thermal.autoPrint) {
-        void handlePrint(full);
-      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
