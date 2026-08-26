@@ -9,6 +9,12 @@ import { fetchAreas, fetchProcedures, type Area, type Procedure } from "@/lib/si
 import { generateTicketAsStaff } from "@/lib/sigat.functions";
 import { formatTicketCode, formatTicketCodeHtml, TicketCodeView } from "@/lib/ticket-code";
 import { todayLaPaz } from "@/lib/date";
+import {
+  parseThermalPrinterSettings,
+  printTicketThermal,
+  type ThermalPrinterSettings,
+  DEFAULT_THERMAL_PRINTER,
+} from "@/lib/thermal-printer";
 
 export const Route = createFileRoute("/_authenticated/host")({
   head: () => ({ meta: [{ title: "Sacar turnos — SIGAT" }] }),
@@ -233,6 +239,53 @@ function HostForm({ userId }: { userId: string }) {
   const [procedureId, setProcedureId] = useState<string | null>(null);
   const [preferential, setPreferential] = useState(false);
   const [lastTicket, setLastTicket] = useState<GeneratedTicket | null>(null);
+  const [thermal, setThermal] = useState<ThermalPrinterSettings>(DEFAULT_THERMAL_PRINTER);
+  const [printing, setPrinting] = useState(false);
+
+  useEffect(() => {
+    void supabase.from("settings").select("*").then(({ data }) => {
+      const row = (data ?? []).find((r) => r.key === "thermal_printer");
+      setThermal(parseThermalPrinterSettings(row?.value));
+    });
+  }, []);
+
+  async function handlePrint(t: GeneratedTicket) {
+    setPrinting(true);
+    try {
+      if (thermal.enabled) {
+        const code = formatTicketCode(t.code);
+        const result = await printTicketThermal(
+          {
+            code,
+            area: t.area?.name,
+            procedure: t.procedure?.name,
+            created_at: t.created_at,
+          },
+          thermal,
+        );
+        const via =
+          result.method === "agent"
+            ? "agente local"
+            : result.method === "rawbt"
+              ? "RawBT"
+              : "servidor";
+        toast.success(`Ticket ${code} enviado (${via})`);
+      } else {
+        printHostTicket(t);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "No se pudo imprimir por red";
+      toast.error(msg);
+      // Fallback al diálogo del navegador
+      try {
+        printHostTicket(t);
+      } catch {
+        /* ignore */
+      }
+    } finally {
+      setPrinting(false);
+    }
+  }
 
   const areas = useQuery({ queryKey: ["areas"], queryFn: fetchAreas });
   const procs = useQuery({
@@ -274,6 +327,9 @@ function HostForm({ userId }: { userId: string }) {
       setProcedureId(null);
       setPreferential(false);
       void qc.invalidateQueries({ queryKey: ["host_recent_tickets"] });
+      if (thermal.enabled && thermal.autoPrint) {
+        void handlePrint(full);
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -374,8 +430,9 @@ function HostForm({ userId }: { userId: string }) {
                       <button
                         type="button"
                         aria-label={`Imprimir ${formatTicketCode(t.code)}`}
-                        onClick={() => printHostTicket(t)}
-                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+                        disabled={printing}
+                        onClick={() => void handlePrint(t)}
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
                       >
                         <Printer className="h-3.5 w-3.5" />
                       </button>
@@ -462,11 +519,16 @@ function HostForm({ userId }: { userId: string }) {
               <div className="mt-6 flex w-full flex-col gap-2">
                 <button
                   type="button"
-                  onClick={() => printHostTicket(lastTicket)}
-                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-primary px-4 py-3 font-semibold text-primary-foreground shadow-elegant transition hover:brightness-105"
+                  disabled={printing}
+                  onClick={() => void handlePrint(lastTicket)}
+                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-primary px-4 py-3 font-semibold text-primary-foreground shadow-elegant transition hover:brightness-105 disabled:opacity-50"
                 >
                   <Printer className="h-4 w-4" />
-                  Imprimir ticket
+                  {printing
+                    ? "Imprimiendo..."
+                    : thermal.enabled
+                      ? "Imprimir (térmica / red)"
+                      : "Imprimir ticket"}
                 </button>
                 <button
                   type="button"

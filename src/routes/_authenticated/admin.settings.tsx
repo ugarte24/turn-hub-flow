@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Save, Info, Upload, Film, Download, Copy, QrCode, Volume2 } from "lucide-react";
+import { Save, Info, Upload, Film, Download, Copy, QrCode, Volume2, Printer } from "lucide-react";
 import {
   DEFAULT_TV_VOICE,
   parseTvVoiceSettings,
@@ -15,6 +15,11 @@ import {
   VOICE_RATE_MIN,
   VOICE_RATE_STEP,
 } from "@/lib/tv-voice";
+import {
+  DEFAULT_THERMAL_PRINTER,
+  parseThermalPrinterSettings,
+  type ThermalPrinterSettings,
+} from "@/lib/thermal-printer";
 
 export const Route = createFileRoute("/_authenticated/admin/settings")({
   head: () => ({ meta: [{ title: "Configuración — SIGAT" }] }),
@@ -45,6 +50,7 @@ function SettingsPage() {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState("");
+  const [thermal, setThermal] = useState<ThermalPrinterSettings>(DEFAULT_THERMAL_PRINTER);
 
   useEffect(() => {
     QRCode.toDataURL(CITIZEN_QR_URL, { width: 512, margin: 2, errorCorrectionLevel: "M" })
@@ -65,6 +71,7 @@ function SettingsPage() {
         videoFileName?: string;
       } | undefined;
       const sound = r.find((x) => x.key === "sound")?.value as Record<string, unknown> | undefined;
+      const thermalRow = r.find((x) => x.key === "thermal_printer")?.value;
       if (hours?.start) setHoursStart(hours.start);
       if (hours?.end) setHoursEnd(hours.end);
       if (tv?.institution) setInstitution(tv.institution);
@@ -78,6 +85,7 @@ function SettingsPage() {
       const parsed = parseTvVoiceSettings(sound);
       setVoiceLang(parsed.voiceLang);
       setVoiceRate(parsed.rate);
+      setThermal(parseThermalPrinterSettings(thermalRow));
     });
   }, []);
 
@@ -140,6 +148,17 @@ function SettingsPage() {
           rate: voiceRate,
         },
       },
+      {
+        key: "thermal_printer",
+        value: {
+          enabled: thermal.enabled,
+          host: thermal.host.trim(),
+          port: thermal.port || 9100,
+          autoCut: thermal.autoCut,
+          autoPrint: thermal.autoPrint,
+          agentUrl: thermal.agentUrl.trim().replace(/\/$/, ""),
+        },
+      },
     ];
     const { error } = await supabase.from("settings").upsert(updates);
     setLoading(false);
@@ -179,7 +198,7 @@ function SettingsPage() {
   return (
     <div className="p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:p-10">
       <h1 className="text-2xl font-extrabold md:text-3xl">Configuración</h1>
-      <p className="text-sm text-muted-foreground">Horarios, pantalla, video, sonidos y QR de acceso</p>
+      <p className="text-sm text-muted-foreground">Horarios, pantalla, video, sonidos, impresora térmica y QR</p>
 
       <div className="mt-5 grid gap-4 md:mt-6 md:grid-cols-2 md:gap-6">
         <Card title="Horario de atención">
@@ -347,6 +366,72 @@ function SettingsPage() {
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             La lista de países es la misma en celular y computadora. El acento real depende de las voces instaladas en la TV: si no hay voz de ese país, se usa la más cercana (México o España).
           </p>
+        </Card>
+
+        <Card title="Impresora térmica (ZKP8008 / ESC-POS)">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={thermal.enabled}
+              onChange={(e) => setThermal((t) => ({ ...t, enabled: e.target.checked }))}
+            />
+            Usar impresión por red (rápida, con corte)
+          </label>
+          {thermal.enabled && (
+            <>
+              <Field label="IP de la impresora">
+                <input
+                  value={thermal.host}
+                  onChange={(e) => setThermal((t) => ({ ...t, host: e.target.value }))}
+                  className="input"
+                  placeholder="192.168.1.50"
+                />
+              </Field>
+              <Field label="Puerto Raw">
+                <input
+                  type="number"
+                  value={thermal.port}
+                  onChange={(e) => setThermal((t) => ({ ...t, port: Number(e.target.value) || 9100 }))}
+                  className="input"
+                  placeholder="9100"
+                />
+              </Field>
+              <Field label="URL del agente local (recomendado con Vercel / celular)">
+                <input
+                  value={thermal.agentUrl}
+                  onChange={(e) => setThermal((t) => ({ ...t, agentUrl: e.target.value }))}
+                  className="input"
+                  placeholder="http://192.168.1.10:8787"
+                />
+              </Field>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={thermal.autoCut}
+                  onChange={(e) => setThermal((t) => ({ ...t, autoCut: e.target.checked }))}
+                />
+                Cortar papel al final
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={thermal.autoPrint}
+                  onChange={(e) => setThermal((t) => ({ ...t, autoPrint: e.target.checked }))}
+                />
+                Imprimir automáticamente al generar turno
+              </label>
+              <p className="flex items-start gap-2 rounded-lg bg-accent/50 p-3 text-xs text-muted-foreground">
+                <Printer className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>
+                  En una PC de la oficina ejecutá{" "}
+                  <code className="rounded bg-background px-1">node scripts/sigat-print-agent.mjs</code>
+                  {" "}con <code className="rounded bg-background px-1">PRINTER_HOST=IP_IMPRESORA</code>.
+                  Poné la URL del agente arriba (ej. http://IP-PC:8787). Así el celular en la WiFi imprime y corta.
+                  En Android también podés usar la app RawBT si no hay agente.
+                </span>
+              </p>
+            </>
+          )}
         </Card>
 
         <Card title="QR de acceso">

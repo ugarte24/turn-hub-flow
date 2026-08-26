@@ -9,39 +9,34 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TicketRouteImport } from './routes/ticket'
-import { Route as StaffRouteImport } from './routes/staff'
-import { Route as DisplayRouteImport } from './routes/display'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedOperatorRouteImport } from './routes/_authenticated/operator'
-import { Route as AuthenticatedHostRouteImport } from './routes/_authenticated/host'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as DisplayRouteImport } from './routes/display'
+import { Route as StaffRouteImport } from './routes/staff'
+import { Route as TicketRouteImport } from './routes/ticket'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedHostRouteImport } from './routes/_authenticated/host'
+import { Route as AuthenticatedOperatorRouteImport } from './routes/_authenticated/operator'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
-import { Route as ApiLegacyTransferRouteImport } from './routes/api/legacy/transfer'
-import { Route as ApiLegacyTicketStatusRouteImport } from './routes/api/legacy/ticket-status'
-import { Route as ApiLegacyStateRouteImport } from './routes/api/legacy/state'
-import { Route as ApiLegacyLoginRouteImport } from './routes/api/legacy/login'
-import { Route as ApiLegacyCallNextRouteImport } from './routes/api/legacy/call-next'
-import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
-import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
-import { Route as AuthenticatedAdminServicePointsRouteImport } from './routes/_authenticated/admin.service-points'
 import { Route as AuthenticatedAdminProceduresRouteImport } from './routes/_authenticated/admin.procedures'
+import { Route as AuthenticatedAdminServicePointsRouteImport } from './routes/_authenticated/admin.service-points'
+import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
+import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
+import { Route as ApiLegacyCallNextRouteImport } from './routes/api/legacy/call-next'
+import { Route as ApiLegacyLoginRouteImport } from './routes/api/legacy/login'
+import { Route as ApiLegacyStateRouteImport } from './routes/api/legacy/state'
+import { Route as ApiLegacyTicketStatusRouteImport } from './routes/api/legacy/ticket-status'
+import { Route as ApiLegacyTransferRouteImport } from './routes/api/legacy/transfer'
+import { Route as ApiPrintEscposRouteImport } from './routes/api/print/escpos'
 
-const TicketRoute = TicketRouteImport.update({
-  id: '/ticket',
-  path: '/ticket',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const StaffRoute = StaffRouteImport.update({
-  id: '/staff',
-  path: '/staff',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DisplayRoute = DisplayRouteImport.update({
-  id: '/display',
-  path: '/display',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -49,18 +44,24 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
+const DisplayRoute = DisplayRouteImport.update({
+  id: '/display',
+  path: '/display',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const StaffRoute = StaffRouteImport.update({
+  id: '/staff',
+  path: '/staff',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedOperatorRoute = AuthenticatedOperatorRouteImport.update({
-  id: '/operator',
-  path: '/operator',
+const TicketRoute = TicketRouteImport.update({
+  id: '/ticket',
+  path: '/ticket',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedHostRoute = AuthenticatedHostRouteImport.update({
@@ -68,9 +69,9 @@ const AuthenticatedHostRoute = AuthenticatedHostRouteImport.update({
   path: '/host',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+const AuthenticatedOperatorRoute = AuthenticatedOperatorRouteImport.update({
+  id: '/operator',
+  path: '/operator',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
@@ -78,40 +79,10 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
-const ApiLegacyTransferRoute = ApiLegacyTransferRouteImport.update({
-  id: '/api/legacy/transfer',
-  path: '/api/legacy/transfer',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiLegacyTicketStatusRoute = ApiLegacyTicketStatusRouteImport.update({
-  id: '/api/legacy/ticket-status',
-  path: '/api/legacy/ticket-status',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiLegacyStateRoute = ApiLegacyStateRouteImport.update({
-  id: '/api/legacy/state',
-  path: '/api/legacy/state',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiLegacyLoginRoute = ApiLegacyLoginRouteImport.update({
-  id: '/api/legacy/login',
-  path: '/api/legacy/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiLegacyCallNextRoute = ApiLegacyCallNextRouteImport.update({
-  id: '/api/legacy/call-next',
-  path: '/api/legacy/call-next',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
-  id: '/users',
-  path: '/users',
-  getParentRoute: () => AuthenticatedAdminRoute,
-} as any)
-const AuthenticatedAdminSettingsRoute =
-  AuthenticatedAdminSettingsRouteImport.update({
-    id: '/settings',
-    path: '/settings',
+const AuthenticatedAdminProceduresRoute =
+  AuthenticatedAdminProceduresRouteImport.update({
+    id: '/procedures',
+    path: '/procedures',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminServicePointsRoute =
@@ -120,12 +91,47 @@ const AuthenticatedAdminServicePointsRoute =
     path: '/service-points',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
-const AuthenticatedAdminProceduresRoute =
-  AuthenticatedAdminProceduresRouteImport.update({
-    id: '/procedures',
-    path: '/procedures',
+const AuthenticatedAdminSettingsRoute =
+  AuthenticatedAdminSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const ApiLegacyCallNextRoute = ApiLegacyCallNextRouteImport.update({
+  id: '/api/legacy/call-next',
+  path: '/api/legacy/call-next',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLegacyLoginRoute = ApiLegacyLoginRouteImport.update({
+  id: '/api/legacy/login',
+  path: '/api/legacy/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLegacyStateRoute = ApiLegacyStateRouteImport.update({
+  id: '/api/legacy/state',
+  path: '/api/legacy/state',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLegacyTicketStatusRoute = ApiLegacyTicketStatusRouteImport.update({
+  id: '/api/legacy/ticket-status',
+  path: '/api/legacy/ticket-status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLegacyTransferRoute = ApiLegacyTransferRouteImport.update({
+  id: '/api/legacy/transfer',
+  path: '/api/legacy/transfer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPrintEscposRoute = ApiPrintEscposRouteImport.update({
+  id: '/api/print/escpos',
+  path: '/api/print/escpos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/api/legacy/state': typeof ApiLegacyStateRoute
   '/api/legacy/ticket-status': typeof ApiLegacyTicketStatusRoute
   '/api/legacy/transfer': typeof ApiLegacyTransferRoute
+  '/api/print/escpos': typeof ApiPrintEscposRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesByTo {
@@ -164,6 +171,7 @@ export interface FileRoutesByTo {
   '/api/legacy/state': typeof ApiLegacyStateRoute
   '/api/legacy/ticket-status': typeof ApiLegacyTicketStatusRoute
   '/api/legacy/transfer': typeof ApiLegacyTransferRoute
+  '/api/print/escpos': typeof ApiPrintEscposRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesById {
@@ -186,6 +194,7 @@ export interface FileRoutesById {
   '/api/legacy/state': typeof ApiLegacyStateRoute
   '/api/legacy/ticket-status': typeof ApiLegacyTicketStatusRoute
   '/api/legacy/transfer': typeof ApiLegacyTransferRoute
+  '/api/print/escpos': typeof ApiPrintEscposRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRouteTypes {
@@ -208,6 +217,7 @@ export interface FileRouteTypes {
     | '/api/legacy/state'
     | '/api/legacy/ticket-status'
     | '/api/legacy/transfer'
+    | '/api/print/escpos'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -227,6 +237,7 @@ export interface FileRouteTypes {
     | '/api/legacy/state'
     | '/api/legacy/ticket-status'
     | '/api/legacy/transfer'
+    | '/api/print/escpos'
     | '/admin'
   id:
     | '__root__'
@@ -248,6 +259,7 @@ export interface FileRouteTypes {
     | '/api/legacy/state'
     | '/api/legacy/ticket-status'
     | '/api/legacy/transfer'
+    | '/api/print/escpos'
     | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
 }
@@ -263,36 +275,16 @@ export interface RootRouteChildren {
   ApiLegacyStateRoute: typeof ApiLegacyStateRoute
   ApiLegacyTicketStatusRoute: typeof ApiLegacyTicketStatusRoute
   ApiLegacyTransferRoute: typeof ApiLegacyTransferRoute
+  ApiPrintEscposRoute: typeof ApiPrintEscposRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/ticket': {
-      id: '/ticket'
-      path: '/ticket'
-      fullPath: '/ticket'
-      preLoaderRoute: typeof TicketRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/staff': {
-      id: '/staff'
-      path: '/staff'
-      fullPath: '/staff'
-      preLoaderRoute: typeof StaffRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/display': {
-      id: '/display'
-      path: '/display'
-      fullPath: '/display'
-      preLoaderRoute: typeof DisplayRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -302,18 +294,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/operator': {
-      id: '/_authenticated/operator'
-      path: '/operator'
-      fullPath: '/operator'
-      preLoaderRoute: typeof AuthenticatedOperatorRouteImport
+    '/display': {
+      id: '/display'
+      path: '/display'
+      fullPath: '/display'
+      preLoaderRoute: typeof DisplayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/staff': {
+      id: '/staff'
+      path: '/staff'
+      fullPath: '/staff'
+      preLoaderRoute: typeof StaffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ticket': {
+      id: '/ticket'
+      path: '/ticket'
+      fullPath: '/ticket'
+      preLoaderRoute: typeof TicketRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/host': {
@@ -323,11 +336,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedHostRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/admin': {
-      id: '/_authenticated/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+    '/_authenticated/operator': {
+      id: '/_authenticated/operator'
+      path: '/operator'
+      fullPath: '/operator'
+      preLoaderRoute: typeof AuthenticatedOperatorRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin/': {
@@ -337,53 +350,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/api/legacy/transfer': {
-      id: '/api/legacy/transfer'
-      path: '/api/legacy/transfer'
-      fullPath: '/api/legacy/transfer'
-      preLoaderRoute: typeof ApiLegacyTransferRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/legacy/ticket-status': {
-      id: '/api/legacy/ticket-status'
-      path: '/api/legacy/ticket-status'
-      fullPath: '/api/legacy/ticket-status'
-      preLoaderRoute: typeof ApiLegacyTicketStatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/legacy/state': {
-      id: '/api/legacy/state'
-      path: '/api/legacy/state'
-      fullPath: '/api/legacy/state'
-      preLoaderRoute: typeof ApiLegacyStateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/legacy/login': {
-      id: '/api/legacy/login'
-      path: '/api/legacy/login'
-      fullPath: '/api/legacy/login'
-      preLoaderRoute: typeof ApiLegacyLoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/legacy/call-next': {
-      id: '/api/legacy/call-next'
-      path: '/api/legacy/call-next'
-      fullPath: '/api/legacy/call-next'
-      preLoaderRoute: typeof ApiLegacyCallNextRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/admin/users': {
-      id: '/_authenticated/admin/users'
-      path: '/users'
-      fullPath: '/admin/users'
-      preLoaderRoute: typeof AuthenticatedAdminUsersRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
-    '/_authenticated/admin/settings': {
-      id: '/_authenticated/admin/settings'
-      path: '/settings'
-      fullPath: '/admin/settings'
-      preLoaderRoute: typeof AuthenticatedAdminSettingsRouteImport
+    '/_authenticated/admin/procedures': {
+      id: '/_authenticated/admin/procedures'
+      path: '/procedures'
+      fullPath: '/admin/procedures'
+      preLoaderRoute: typeof AuthenticatedAdminProceduresRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/service-points': {
@@ -393,12 +364,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminServicePointsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/_authenticated/admin/procedures': {
-      id: '/_authenticated/admin/procedures'
-      path: '/procedures'
-      fullPath: '/admin/procedures'
-      preLoaderRoute: typeof AuthenticatedAdminProceduresRouteImport
+    '/_authenticated/admin/settings': {
+      id: '/_authenticated/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AuthenticatedAdminSettingsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/users': {
+      id: '/_authenticated/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AuthenticatedAdminUsersRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/api/legacy/call-next': {
+      id: '/api/legacy/call-next'
+      path: '/api/legacy/call-next'
+      fullPath: '/api/legacy/call-next'
+      preLoaderRoute: typeof ApiLegacyCallNextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/legacy/login': {
+      id: '/api/legacy/login'
+      path: '/api/legacy/login'
+      fullPath: '/api/legacy/login'
+      preLoaderRoute: typeof ApiLegacyLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/legacy/state': {
+      id: '/api/legacy/state'
+      path: '/api/legacy/state'
+      fullPath: '/api/legacy/state'
+      preLoaderRoute: typeof ApiLegacyStateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/legacy/ticket-status': {
+      id: '/api/legacy/ticket-status'
+      path: '/api/legacy/ticket-status'
+      fullPath: '/api/legacy/ticket-status'
+      preLoaderRoute: typeof ApiLegacyTicketStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/legacy/transfer': {
+      id: '/api/legacy/transfer'
+      path: '/api/legacy/transfer'
+      fullPath: '/api/legacy/transfer'
+      preLoaderRoute: typeof ApiLegacyTransferRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/print/escpos': {
+      id: '/api/print/escpos'
+      path: '/api/print/escpos'
+      fullPath: '/api/print/escpos'
+      preLoaderRoute: typeof ApiPrintEscposRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -449,17 +469,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLegacyStateRoute: ApiLegacyStateRoute,
   ApiLegacyTicketStatusRoute: ApiLegacyTicketStatusRoute,
   ApiLegacyTransferRoute: ApiLegacyTransferRoute,
+  ApiPrintEscposRoute: ApiPrintEscposRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
