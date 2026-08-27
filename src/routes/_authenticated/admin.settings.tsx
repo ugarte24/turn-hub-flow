@@ -152,6 +152,8 @@ function SettingsPage() {
         key: "thermal_printer",
         value: {
           enabled: thermal.enabled,
+          host: thermal.host.trim(),
+          port: thermal.port || 9100,
           autoCut: thermal.autoCut,
         },
       },
@@ -375,6 +377,25 @@ function SettingsPage() {
           </label>
           {thermal.enabled && (
             <>
+              <Field label="IP de la impresora">
+                <input
+                  value={thermal.host}
+                  onChange={(e) => setThermal((t) => ({ ...t, host: e.target.value }))}
+                  className="input"
+                  placeholder="192.168.1.50"
+                  inputMode="decimal"
+                  autoComplete="off"
+                />
+              </Field>
+              <Field label="Puerto">
+                <input
+                  type="number"
+                  value={thermal.port}
+                  onChange={(e) => setThermal((t) => ({ ...t, port: Number(e.target.value) || 9100 }))}
+                  className="input"
+                  placeholder="9100"
+                />
+              </Field>
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
@@ -386,9 +407,9 @@ function SettingsPage() {
               <p className="flex items-start gap-2 rounded-lg bg-accent/50 p-3 text-xs text-muted-foreground">
                 <Printer className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span>
-                  Instalá la app <strong>RawBT</strong> en el celular Android y configurá ahí la ZKP8008
-                  (IP / Bluetooth / USB). RawBT se abre solo al tocar <strong>Imprimir</strong>, no al
-                  generar el turno. En PC se usa el diálogo del navegador.
+                  Poné la misma IP y puerto en la app <strong>RawBT</strong> del celular
+                  (conexión WiFi / Ethernet, puerto 9100). SIGAT abre RawBT solo al tocar{" "}
+                  <strong>Imprimir</strong>. En PC se usa el diálogo del navegador.
                 </span>
               </p>
             </>

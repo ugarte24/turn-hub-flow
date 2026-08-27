@@ -4,19 +4,28 @@ import { buildTicketEscPos, uint8ToBase64, type EscPosTicketData } from "@/lib/e
 
 export type ThermalPrinterSettings = {
   enabled: boolean;
+  /** IP de la ZKP8008 en la LAN (la misma que se configura en RawBT) */
+  host: string;
+  /** Puerto Raw / AppSocket (casi siempre 9100) */
+  port: number;
   /** Corte automático al final (comando ESC/POS) */
   autoCut: boolean;
 };
 
 export const DEFAULT_THERMAL_PRINTER: ThermalPrinterSettings = {
   enabled: false,
+  host: "",
+  port: 9100,
   autoCut: true,
 };
 
 export function parseThermalPrinterSettings(raw: unknown): ThermalPrinterSettings {
   const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const port = Number(o.port);
   return {
     enabled: o.enabled === true,
+    host: typeof o.host === "string" ? o.host.trim() : "",
+    port: Number.isFinite(port) && port > 0 && port < 65536 ? port : 9100,
     autoCut: o.autoCut !== false,
   };
 }
