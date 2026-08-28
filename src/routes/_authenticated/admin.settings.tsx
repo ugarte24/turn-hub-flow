@@ -143,7 +143,7 @@ function SettingsPage() {
           enabled: soundEnabled,
           voice: voiceEnabled,
           voiceURI: "",
-          voiceName: "",
+          voiceName: voiceLang === "es-MX" ? "Dalia" : "",
           voiceLang,
           rate: voiceRate,
         },
@@ -349,7 +349,7 @@ function SettingsPage() {
                 onClick={() => {
                   void speakTvUtterance(VOICE_PREVIEW_TEXT, {
                     voiceURI: "",
-                    voiceName: "",
+                    voiceName: voiceLang === "es-MX" ? "Dalia" : "",
                     voiceLang,
                     rate: voiceRate,
                   }).catch(() => toast.error("No se pudo reproducir la prueba"));

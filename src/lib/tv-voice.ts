@@ -7,8 +7,8 @@ export type TvVoiceSettings = {
 
 export const DEFAULT_TV_VOICE: TvVoiceSettings = {
   voiceURI: "",
-  voiceName: "",
-  voiceLang: "es-ES",
+  voiceName: "Dalia",
+  voiceLang: "es-MX",
   rate: 0.9,
 };
 
@@ -54,9 +54,11 @@ export function parseTvVoiceSettings(sound: Record<string, unknown> | undefined)
     : DEFAULT_TV_VOICE.rate;
   const rawLang = typeof sound?.voiceLang === "string" ? sound.voiceLang : "";
   const voiceLang = catalogLang(rawLang) || DEFAULT_TV_VOICE.voiceLang;
+  const rawName = typeof sound?.voiceName === "string" ? sound.voiceName.trim() : "";
+  const voiceName = rawName || DEFAULT_TV_VOICE.voiceName;
   return {
     voiceURI: "",
-    voiceName: "",
+    voiceName,
     voiceLang,
     rate,
   };
@@ -127,6 +129,13 @@ function localeFallbackChain(lang: string): string[] {
 export function findSpeechVoice(settings: TvVoiceSettings): SpeechSynthesisVoice | null {
   const voices = listSpeechVoices().filter(isSpanishVoice);
   if (!voices.length) return listSpeechVoices()[0] ?? null;
+
+  const wantedName = settings.voiceName?.trim();
+  if (wantedName) {
+    const byName = voices.find((v) => v.name.toLowerCase().includes(wantedName.toLowerCase()));
+    if (byName) return byName;
+  }
+
   for (const lang of localeFallbackChain(settings.voiceLang || DEFAULT_TV_VOICE.voiceLang)) {
     const match = voices.find((v) => normalizeVoiceLang(v.lang) === lang);
     if (match) return match;
