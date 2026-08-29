@@ -6,6 +6,7 @@ import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireSupabaseUrlAndAnon } from "@/integrations/supabase/env";
 import { todayLaPaz } from "@/lib/date";
+import { formatTicketCode } from "@/lib/ticket-code";
 
 // ---------- Device identity (cookie) ----------
 const DEVICE_COOKIE = "sigat_device";
@@ -264,13 +265,33 @@ export const callNextTicket = createServerFn({ method: "POST" })
     if (spErr || !spRow) throw new Error("Puesto no encontrado");
     const kind = resolveSpKind(spRow as { kind?: string | null; name: string });
 
+    const today = todayLaPaz();
+
+    // Un puesto solo puede atender un turno a la vez (evita 2 en TV)
+    const { data: busy } = await supabase
+      .from("tickets")
+      .select("id, code")
+      .eq("day", today)
+      .eq("service_point_id", data.servicePointId)
+      .in("status", ["calling", "in_service"])
+      .order("called_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (busy) {
+      const code = typeof busy.code === "string" ? formatTicketCode(busy.code) : "";
+      throw new Error(
+        code && code !== "—"
+          ? `Ya tenés el turno ${code} en atención. Finalizalo o marcalo ausente antes de llamar al siguiente.`
+          : "Ya tenés un turno en atención. Finalizalo o marcalo ausente antes de llamar al siguiente.",
+      );
+    }
+
     const { data: sp } = await supabase
       .from("service_point_procedures")
       .select("procedure_id")
       .eq("service_point_id", data.servicePointId);
     const procIds = (sp ?? []).map((r) => r.procedure_id);
 
-    const today = todayLaPaz();
     type TicketPick = { id: string };
     let next: TicketPick | null = null;
 

@@ -101,12 +101,31 @@ export async function callNextForOperator(supabase: Db, userId: string, serviceP
   }
 
   const kind = resolveSpKind(spRow as { kind?: string | null; name: string });
+  const today = todayLaPaz();
+
+  const { data: busy } = await supabase
+    .from("tickets")
+    .select("id, code")
+    .eq("day", today)
+    .eq("service_point_id", servicePointId)
+    .in("status", ["calling", "in_service"])
+    .order("called_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (busy) {
+    const code = typeof busy.code === "string" ? formatTicketCodeLegacy(busy.code) : "";
+    throw new Error(
+      code
+        ? `Ya tenés el turno ${code} en atención. Finalizalo o marcalo ausente antes de llamar al siguiente.`
+        : "Ya tenés un turno en atención. Finalizalo o marcalo ausente antes de llamar al siguiente.",
+    );
+  }
+
   const { data: sp } = await supabase
     .from("service_point_procedures")
     .select("procedure_id")
     .eq("service_point_id", servicePointId);
   const procIds = (sp ?? []).map((r) => r.procedure_id);
-  const today = todayLaPaz();
 
   type TicketPick = { id: string };
   let next: TicketPick | null = null;

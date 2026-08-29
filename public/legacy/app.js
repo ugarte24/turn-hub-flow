@@ -365,9 +365,9 @@
       })
       .catch(function (ex) {
         setMsg(ex.message || "Error al llamar", true);
-      })
-      .then(function () {
-        btn.disabled = false;
+        return api("/api/legacy/state").then(function (state) {
+          renderState(state);
+        }).catch(function () {});
       });
   });
 
