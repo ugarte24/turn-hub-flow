@@ -51,7 +51,7 @@ function publicClient() {
 
 // ---------- PUBLIC: ticket generation ----------
 export const generateTicket = createServerFn({ method: "POST" })
-  .inputValidator((d: { areaId: string; procedureId: string }) =>
+  .validator((d: { areaId: string; procedureId: string }) =>
     z.object({
       areaId: z.string().uuid(),
       procedureId: z.string().uuid(),
@@ -100,7 +100,7 @@ export const findActiveTicketByDevice = createServerFn({ method: "POST" }).handl
 // ---------- HOST (Personal de apoyo): generate tickets on behalf of citizens ----------
 export const generateTicketAsStaff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { areaId: string; procedureId: string; preferential?: boolean }) =>
+  .validator((d: { areaId: string; procedureId: string; preferential?: boolean }) =>
     z.object({
       areaId: z.string().uuid(),
       procedureId: z.string().uuid(),
@@ -168,7 +168,7 @@ export const findRateableTicketByDevice = createServerFn({ method: "POST" }).han
 });
 
 export const submitTicketRating = createServerFn({ method: "POST" })
-  .inputValidator((d: { ticketId: string; score: number; comment?: string }) =>
+  .validator((d: { ticketId: string; score: number; comment?: string }) =>
     z.object({
       ticketId: z.string().uuid(),
       score: z.number().int().min(1).max(5),
@@ -189,7 +189,7 @@ export const submitTicketRating = createServerFn({ method: "POST" })
   });
 
 export const cancelTicketByDevice = createServerFn({ method: "POST" })
-  .inputValidator((d: { ticketId: string }) =>
+  .validator((d: { ticketId: string }) =>
     z.object({ ticketId: z.string().uuid() }).parse(d),
   )
   .handler(async ({ data }) => {
@@ -253,7 +253,7 @@ async function resolveRuatOrigin(
 
 export const callNextTicket = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { servicePointId: string }) => z.object({ servicePointId: z.string().uuid() }).parse(d))
+  .validator((d: { servicePointId: string }) => z.object({ servicePointId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
@@ -412,7 +412,7 @@ export const callNextTicket = createServerFn({ method: "POST" })
 /** RUAT deriva el turno en atención a cualquier ventanilla libre. */
 export const transferTicketToCounter = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { ticketId: string }) => z.object({ ticketId: z.string().uuid() }).parse(d))
+  .validator((d: { ticketId: string }) => z.object({ ticketId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: ticket, error: tErr } = await supabase.from("tickets").select("*").eq("id", data.ticketId).single();
@@ -454,7 +454,7 @@ export const transferTicketToCounter = createServerFn({ method: "POST" })
  */
 export const transferTicketToCashier = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { ticketId: string }) => z.object({ ticketId: z.string().uuid() }).parse(d))
+  .validator((d: { ticketId: string }) => z.object({ ticketId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: ticket, error: tErr } = await supabase.from("tickets").select("*").eq("id", data.ticketId).single();
@@ -496,7 +496,7 @@ export const transferTicketToCashier = createServerFn({ method: "POST" })
  */
 export const returnTicketToOrigin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { ticketId: string }) => z.object({ ticketId: z.string().uuid() }).parse(d))
+  .validator((d: { ticketId: string }) => z.object({ ticketId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: ticket, error: tErr } = await supabase.from("tickets").select("*").eq("id", data.ticketId).single();
@@ -532,7 +532,7 @@ export const returnTicketToOrigin = createServerFn({ method: "POST" })
 
 export const updateTicketStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { ticketId: string; status: "calling" | "in_service" | "finished" | "absent" | "cancelled" }) =>
+  .validator((d: { ticketId: string; status: "calling" | "in_service" | "finished" | "absent" | "cancelled" }) =>
     z.object({
       ticketId: z.string().uuid(),
       status: z.enum(["calling", "in_service", "finished", "absent", "cancelled"]),
@@ -571,7 +571,7 @@ export const listOperators = createServerFn({ method: "GET" })
 
 export const createOperator = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { email: string; password: string; fullName: string; role: "admin" | "operator" | "host" }) =>
+  .validator((d: { email: string; password: string; fullName: string; role: "admin" | "operator" | "host" }) =>
     z.object({
       email: z.string().email().max(200),
       password: z.string().min(6).max(100),
@@ -599,7 +599,7 @@ export const createOperator = createServerFn({ method: "POST" })
 
 export const updateOperator = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: {
+  .validator((d: {
     userId: string;
     fullName: string;
     role: "admin" | "operator" | "host";
@@ -650,7 +650,7 @@ export const updateOperator = createServerFn({ method: "POST" })
 
 export const setUserActive = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { userId: string; active: boolean }) =>
+  .validator((d: { userId: string; active: boolean }) =>
     z.object({ userId: z.string().uuid(), active: z.boolean() }).parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -663,7 +663,7 @@ export const setUserActive = createServerFn({ method: "POST" })
 
 export const deleteUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { userId: string }) => z.object({ userId: z.string().uuid() }).parse(d))
+  .validator((d: { userId: string }) => z.object({ userId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
@@ -677,7 +677,7 @@ export const deleteUser = createServerFn({ method: "POST" })
 // ---------- ADMIN: service points ----------
 export const upsertServicePoint = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: {
+  .validator((d: {
     id?: string;
     name: string;
     active: boolean;
@@ -733,7 +733,7 @@ export const upsertServicePoint = createServerFn({ method: "POST" })
 
 export const deleteServicePoint = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
+  .validator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
@@ -757,7 +757,7 @@ export const bootstrapFirstAdmin = createServerFn({ method: "POST" })
 // ---------- ADMIN: areas ----------
 export const upsertArea = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { id?: string; code: string; name: string; active: boolean }) =>
+  .validator((d: { id?: string; code: string; name: string; active: boolean }) =>
     z.object({
       id: z.string().uuid().optional(),
       code: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{1,3}$/, "Código de 1 a 3 letras/números"),
@@ -800,7 +800,7 @@ export const upsertArea = createServerFn({ method: "POST" })
 
 export const deleteArea = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
+  .validator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
@@ -820,7 +820,7 @@ export const deleteArea = createServerFn({ method: "POST" })
 // ---------- ADMIN: procedures ----------
 export const upsertProcedure = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { id?: string; areaId: string; name: string; active: boolean }) =>
+  .validator((d: { id?: string; areaId: string; name: string; active: boolean }) =>
     z.object({
       id: z.string().uuid().optional(),
       areaId: z.string().uuid(),
@@ -842,7 +842,7 @@ export const upsertProcedure = createServerFn({ method: "POST" })
 
 export const deleteProcedure = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
+  .validator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
