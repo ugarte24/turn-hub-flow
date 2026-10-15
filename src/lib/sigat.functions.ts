@@ -530,6 +530,135 @@ export const returnTicketToOrigin = createServerFn({ method: "POST" })
     return updated;
   });
 
+export type IdlePeerOperator = {
+  servicePointId: string;
+  servicePointName: string;
+  operatorId: string;
+  operatorName: string;
+};
+
+/** Puestos del mismo tipo, con operador asignado y sin turno en atención. */
+export const listIdlePeerOperators = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data: myPoints } = await supabase
+      .from("service_points")
+      .select("id, name, kind, operator_id, active")
+      .eq("operator_id", userId);
+    const mySp = (myPoints ?? []).find((p) => p.active) ?? (myPoints ?? [])[0];
+    if (!mySp) return [] as IdlePeerOperator[];
+    const myKind = resolveSpKind(mySp as { kind?: string | null; name: string });
+
+    const { data: points } = await supabase
+      .from("service_points")
+      .select("id, name, kind, operator_id, active")
+      .eq("active", true)
+      .not("operator_id", "is", null);
+    const peers = (points ?? []).filter((p) => {
+      if (!p.operator_id || p.operator_id === userId || p.id === mySp.id) return false;
+      return resolveSpKind(p as { kind?: string | null; name: string }) === myKind;
+    });
+    if (peers.length === 0) return [] as IdlePeerOperator[];
+
+    const today = todayLaPaz();
+    const peerIds = peers.map((p) => p.id);
+    const { data: busyRows } = await supabase
+      .from("tickets")
+      .select("service_point_id")
+      .eq("day", today)
+      .in("service_point_id", peerIds)
+      .in("status", ["calling", "in_service"]);
+    const busy = new Set((busyRows ?? []).map((t) => t.service_point_id).filter(Boolean));
+
+    const idle = peers.filter((p) => !busy.has(p.id));
+    if (idle.length === 0) return [] as IdlePeerOperator[];
+
+    const opIds = [...new Set(idle.map((p) => p.operator_id as string))];
+    const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", opIds);
+    const nameById = new Map((profiles ?? []).map((p) => [p.id, p.full_name?.trim() || ""]));
+
+    return idle.map((p) => ({
+      servicePointId: p.id,
+      servicePointName: p.name,
+      operatorId: p.operator_id as string,
+      operatorName: nameById.get(p.operator_id as string) || p.name,
+    })) as IdlePeerOperator[];
+  });
+
+/** Pasa el turno en atención a otro puesto libre del mismo tipo (queda llamando ahí). */
+export const handoffTicketToOperator = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { ticketId: string; targetServicePointId: string }) =>
+    z.object({
+      ticketId: z.string().uuid(),
+      targetServicePointId: z.string().uuid(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: ticket, error: tErr } = await supabase.from("tickets").select("*").eq("id", data.ticketId).single();
+    if (tErr || !ticket) throw new Error("Ticket no encontrado");
+    if (ticket.status !== "calling" && ticket.status !== "in_service") {
+      throw new Error("Solo se puede pasar un turno en atención");
+    }
+    if (ticket.operator_id !== userId) {
+      throw new Error("Este turno no está asignado a tu usuario");
+    }
+
+    const { data: myPoints } = await supabase
+      .from("service_points")
+      .select("id, name, kind, active")
+      .eq("operator_id", userId);
+    const mySp = (myPoints ?? []).find((p) => p.active) ?? (myPoints ?? [])[0];
+    if (!mySp) throw new Error("No tenés un puesto asignado");
+    const myKind = resolveSpKind(mySp as { kind?: string | null; name: string });
+
+    const { data: target, error: spErr } = await supabase
+      .from("service_points")
+      .select("id, name, kind, operator_id, active")
+      .eq("id", data.targetServicePointId)
+      .single();
+    if (spErr || !target) throw new Error("Puesto destino no encontrado");
+    if (!target.active) throw new Error("Ese puesto no está activo");
+    if (!target.operator_id) throw new Error("Ese puesto no tiene operador asignado");
+    if (target.operator_id === userId || target.id === mySp.id) {
+      throw new Error("No podés pasarte el turno a vos mismo");
+    }
+    if (resolveSpKind(target as { kind?: string | null; name: string }) !== myKind) {
+      throw new Error("Solo se puede pasar a un operador del mismo tipo de puesto");
+    }
+
+    const today = todayLaPaz();
+    const { data: busy } = await supabase
+      .from("tickets")
+      .select("id")
+      .eq("day", today)
+      .eq("service_point_id", target.id)
+      .in("status", ["calling", "in_service"])
+      .limit(1)
+      .maybeSingle();
+    if (busy) throw new Error("Ese operador ya está atendiendo");
+
+    const { data: updated, error } = await supabase
+      .from("tickets")
+      .update({
+        status: "calling",
+        service_point_id: target.id,
+        operator_id: target.operator_id,
+        called_at: new Date().toISOString(),
+        started_at: null,
+      } as never)
+      .eq("id", data.ticketId)
+      .eq("operator_id", userId)
+      .in("status", ["calling", "in_service"])
+      .select("*, area:areas(*), procedure:procedures(*), service_point:service_points!service_point_id(*)")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!updated) throw new Error("El turno ya no está en tu atención");
+    return updated;
+  });
+
 export const updateTicketStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: { ticketId: string; status: "calling" | "in_service" | "finished" | "absent" | "cancelled" }) =>

@@ -6,11 +6,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchOperatorTickets, fetchServicePoints } from "@/lib/sigat-queries";
 import {
   callNextTicket,
+  handoffTicketToOperator,
+  listIdlePeerOperators,
   returnTicketToOrigin,
   transferTicketToCashier,
   transferTicketToCounter,
   updateTicketStatus,
 } from "@/lib/sigat.functions";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { formatTicketCode, TicketCodeView } from "@/lib/ticket-code";
 import {
   ensureDesktopNotifyPermission,
@@ -21,7 +30,7 @@ import {
 } from "@/lib/desktop-notify";
 import { toast } from "sonner";
 import {
-  PhoneCall, RefreshCcw, UserX, CheckCircle2, XCircle, Building2, ArrowRightLeft, Undo2, Bell, Banknote,
+  PhoneCall, RefreshCcw, UserX, CheckCircle2, XCircle, Building2, ArrowRightLeft, Undo2, Bell, Banknote, Users,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/operator")({
@@ -63,6 +72,10 @@ function OperatorPage() {
   const { user } = Route.useRouteContext();
   const qc = useQueryClient();
   const [notifyPerm, setNotifyPerm] = useState<DesktopNotifyPermission>(() => getDesktopNotifyPermission());
+  const [handoffOpen, setHandoffOpen] = useState(false);
+  const justCalledNextRef = useRef(false);
+  const skipIncomingHandoffToastRef = useRef(true);
+  const lastCallingIdRef = useRef<string | null>(null);
 
   const sps = useQuery({ queryKey: ["service_points"], queryFn: fetchServicePoints, staleTime: 60_000 });
   const tickets = useQuery({
@@ -76,6 +89,8 @@ function OperatorPage() {
   const transferFn = useServerFn(transferTicketToCounter);
   const transferCashierFn = useServerFn(transferTicketToCashier);
   const returnFn = useServerFn(returnTicketToOrigin);
+  const listIdleFn = useServerFn(listIdlePeerOperators);
+  const handoffFn = useServerFn(handoffTicketToOperator);
 
   useEffect(() => {
     localStorage.removeItem("sigat_sp");
@@ -181,11 +196,21 @@ function OperatorPage() {
     }
   }, [tickets.data, needsTransferNotify, spKind, spId]);
 
+  const idlePeers = useQuery({
+    queryKey: ["idle_peer_operators", spId],
+    queryFn: () => listIdleFn(),
+    enabled: handoffOpen && !!spId,
+    staleTime: 5_000,
+  });
+
   const callNext = useMutation({
     mutationFn: async () => callFn({ data: { servicePointId: spId! } }),
     onSuccess: (t) => {
       if (!t) toast.info("No hay turnos en espera para este puesto");
-      else toast.success(`Llamando ${formatTicketCode((t as { code: string }).code)}`);
+      else {
+        justCalledNextRef.current = true;
+        toast.success(`Llamando ${formatTicketCode((t as { code: string }).code)}`);
+      }
       qc.invalidateQueries({ queryKey: ["today_tickets"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -234,6 +259,21 @@ function OperatorPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const doHandoff = useMutation({
+    mutationFn: async (p: { ticketId: string; targetServicePointId: string; targetLabel: string }) => {
+      const row = await handoffFn({ data: { ticketId: p.ticketId, targetServicePointId: p.targetServicePointId } });
+      return { row, targetLabel: p.targetLabel };
+    },
+    onSuccess: ({ row, targetLabel }) => {
+      const code = formatTicketCode((row as { code?: string } | null)?.code);
+      toast.success(`${code && code !== "—" ? code : "Turno"} pasado a ${targetLabel}`);
+      setHandoffOpen(false);
+      qc.invalidateQueries({ queryKey: ["today_tickets"] });
+      qc.invalidateQueries({ queryKey: ["idle_peer_operators"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const myCalling = useMemo(
     () => (tickets.data as TicketRow[] | undefined)?.find(
       (t) => t.service_point_id === spId && t.operator_id === user.id && (t.status === "calling" || t.status === "in_service"),
@@ -267,6 +307,30 @@ function OperatorPage() {
   }, [tickets.data, spKind, spId]);
 
   const dayTickets = ((tickets.data as TicketRow[] | undefined) ?? []).slice(0, 20);
+
+  useEffect(() => {
+    const id = myCalling?.id ?? null;
+    if (skipIncomingHandoffToastRef.current) {
+      skipIncomingHandoffToastRef.current = false;
+      lastCallingIdRef.current = id;
+      return;
+    }
+    const prev = lastCallingIdRef.current;
+    lastCallingIdRef.current = id;
+    if (!id || id === prev) return;
+    if (justCalledNextRef.current) {
+      justCalledNextRef.current = false;
+      return;
+    }
+    const code = formatTicketCode(myCalling?.code);
+    toast.info(`Te pasaron el turno ${code}`, { duration: 12_000 });
+    void showDesktopNotify({
+      title: "Turno pasado a tu puesto",
+      body: `${code} está llamando en tu puesto.`,
+      tag: `handoff:${id}`,
+      withSound: true,
+    });
+  }, [myCalling]);
   const canTransferToRuat = (spKind === "counter" || spKind === "cashier") && !!myCalling;
   const canTransferToCashier = (spKind === "ruat" || spKind === "counter") && !!myCalling;
 
@@ -400,6 +464,7 @@ function OperatorPage() {
 
           <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2 md:mt-6 md:grid-cols-3">
             <ActionBtn onClick={() => doUpdate.mutate({ id: myCalling.id, status: "calling" })} icon={RefreshCcw} label="Repetir llamado" />
+            <ActionBtn onClick={() => setHandoffOpen(true)} icon={Users} label="Pasar a operador" />
             {spKind === "ruat" && (
               <ActionBtn
                 onClick={() => doTransfer.mutate(myCalling.id)}
@@ -497,6 +562,51 @@ function OperatorPage() {
           </table>
         </div>
       </div>
+
+      <Dialog open={handoffOpen} onOpenChange={setHandoffOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pasar a operador</DialogTitle>
+            <DialogDescription>
+              El turno pasa enseguida al puesto elegido y se anuncia en la TV.
+            </DialogDescription>
+          </DialogHeader>
+          {idlePeers.isLoading ? (
+            <p className="text-sm text-muted-foreground">Buscando operadores libres…</p>
+          ) : idlePeers.isError ? (
+            <p className="text-sm text-destructive">{(idlePeers.error as Error).message}</p>
+          ) : (idlePeers.data ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">No hay operadores libres del mismo tipo.</p>
+          ) : (
+            <ul className="space-y-2">
+              {(idlePeers.data ?? []).map((peer) => (
+                <li key={peer.servicePointId}>
+                  <button
+                    type="button"
+                    disabled={doHandoff.isPending || !myCalling}
+                    onClick={() =>
+                      doHandoff.mutate({
+                        ticketId: myCalling!.id,
+                        targetServicePointId: peer.servicePointId,
+                        targetLabel: peer.servicePointName,
+                      })
+                    }
+                    className="flex min-h-12 w-full items-center justify-between rounded-xl border border-border bg-background px-3 py-3 text-left text-sm font-medium transition hover:bg-accent disabled:opacity-50"
+                  >
+                    <span>
+                      {peer.servicePointName}
+                      {peer.operatorName && peer.operatorName !== peer.servicePointName ? (
+                        <span className="mt-0.5 block text-xs font-normal text-muted-foreground">{peer.operatorName}</span>
+                      ) : null}
+                    </span>
+                    <span className="text-xs text-muted-foreground">Libre</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
