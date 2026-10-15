@@ -631,7 +631,7 @@ function ActionBtn({ onClick, icon: Icon, label, primary, variant }: { onClick: 
     : variant === "success" ? "bg-success text-success-foreground hover:brightness-105"
     : variant === "warning" ? "bg-warning text-warning-foreground hover:brightness-105"
     : variant === "destructive" ? "bg-destructive text-destructive-foreground hover:brightness-105"
-    : variant === "handoff" ? "bg-indigo-600 text-white hover:bg-indigo-500"
+    : variant === "handoff" ? "bg-indigo-200 text-indigo-900 hover:bg-indigo-300"
     : "border border-border bg-background hover:bg-accent";
   return (
     <button
