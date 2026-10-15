@@ -196,6 +196,7 @@
     var mine = state.myCalling;
     if (mine) {
       $("my-code").textContent = mine.displayCode || mine.code || "—";
+      $("my-code").className = mine.preferential ? "stat-value stat-ticket prio" : "stat-value stat-ticket";
       $("my-status").textContent = mine.status === "calling" ? "Llamando" : "Atención";
       $("active-code").textContent = mine.displayCode || mine.code || "—";
       renderTags(mine);
@@ -204,6 +205,7 @@
       $("call-btn").disabled = true;
     } else {
       $("my-code").textContent = "—";
+      $("my-code").className = "stat-value stat-ticket";
       $("my-status").textContent = "Libre";
       $("active-tags").innerHTML = "";
       show($("panel-idle"), true);
@@ -229,6 +231,7 @@
         var t = dayTickets[i];
         var pill = statusPill(t.status, t.transfer_to);
         var tr = document.createElement("tr");
+        if (t.preferential) tr.className = "prio";
         tr.innerHTML =
           "<td class=\"col-code\">" + escapeHtml(t.code || "—") + "</td>" +
           "<td>" + escapeHtml(t.procedure || "—") + "</td>" +

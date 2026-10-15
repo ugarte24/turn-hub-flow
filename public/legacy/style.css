@@ -554,6 +554,15 @@ input:focus {
   color: #145a42;
   white-space: nowrap;
 }
+.day-table tbody tr.prio {
+  background: #e8f4fc;
+}
+.day-table tbody tr.prio .col-code {
+  color: #0369a1;
+}
+.stat-ticket.prio {
+  color: #0369a1;
+}
 .col-muted { color: #5a7368; }
 .day-empty {
   margin: 0;

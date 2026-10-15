@@ -77,7 +77,7 @@ export async function fetchOperatorTickets() {
   const { data } = await supabase
     .from("tickets")
     .select(
-      "id, code, ci, status, created_at, called_at, service_point_id, operator_id, origin_service_point_id, origin_operator_id, transfer_to, area:areas(name), procedure:procedures(name), service_point:service_points!service_point_id(name, kind)",
+      "id, code, ci, status, created_at, called_at, preferential, service_point_id, operator_id, origin_service_point_id, origin_operator_id, transfer_to, area:areas(name), procedure:procedures(name), service_point:service_points!service_point_id(name, kind)",
     )
     .eq("day", today)
     .order("created_at", { ascending: false });

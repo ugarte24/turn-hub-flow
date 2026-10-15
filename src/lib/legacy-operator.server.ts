@@ -174,17 +174,31 @@ export async function callNextForOperator(supabase: Db, userId: string, serviceP
   }
 
   if (!next && kind === "cashier") {
-    const { data: forCashier } = await supabase
+    const { data: transferred } = await supabase
       .from("tickets")
-      .select("id")
+      .select("id, preferential, created_at")
       .eq("status", "waiting")
       .eq("day", today)
-      .eq("transfer_to", "cashier")
-      .order("preferential", { ascending: false })
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    next = forCashier;
+      .eq("transfer_to", "cashier");
+    let direct: { id: string; preferential?: boolean | null; created_at: string }[] = [];
+    if (procIds.length > 0) {
+      const { data } = await supabase
+        .from("tickets")
+        .select("id, preferential, created_at")
+        .eq("status", "waiting")
+        .eq("day", today)
+        .in("procedure_id", procIds)
+        .is("transfer_to", null);
+      direct = data ?? [];
+    }
+    const merged = [...(transferred ?? []), ...direct].sort((a, b) => {
+      const ap = a.preferential ? 1 : 0;
+      const bp = b.preferential ? 1 : 0;
+      if (bp !== ap) return bp - ap;
+      return String(a.created_at).localeCompare(String(b.created_at));
+    });
+    next = merged[0] ? { id: merged[0].id } : null;
+    if (!next) return null;
   }
 
   if (!next) {
@@ -377,9 +391,9 @@ export async function getOperatorState(supabase: Db, userId: string) {
   const kind = assigned ? resolveSpKind(assigned as { kind?: string | null; name: string }) : "standard";
 
   const activeSelect =
-    "id, code, ci, status, origin_service_point_id, area:areas(name), procedure:procedures(name)";
+    "id, code, ci, status, preferential, origin_service_point_id, area:areas(name), procedure:procedures(name)";
   const recentSelect =
-    "id, code, status, transfer_to, procedure:procedures(name), service_point:service_points!service_point_id(name)";
+    "id, code, status, preferential, transfer_to, procedure:procedures(name), service_point:service_points!service_point_id(name)";
 
   const [{ data: waitingRows }, { data: myCallingRows }, { data: recentRows }, { data: roleRows }, { data: userData }] =
     await Promise.all([
@@ -417,6 +431,7 @@ export async function getOperatorState(supabase: Db, userId: string) {
     ci: string | null;
     status: string;
     origin_service_point_id: string | null;
+    preferential?: boolean | null;
     area?: { name?: string } | null;
     procedure?: { name?: string } | null;
   } | null;
@@ -490,12 +505,14 @@ export async function getOperatorState(supabase: Db, userId: string) {
           area: myCalling.area?.name ?? null,
           procedure: myCalling.procedure?.name ?? null,
           origin_service_point_id: myCalling.origin_service_point_id ?? null,
+          preferential: !!myCalling.preferential,
         }
       : null,
     dayTickets: recent.map((t) => ({
       id: t.id,
       code: formatTicketCodeLegacy(t.code),
       status: t.status,
+      preferential: !!(t as { preferential?: boolean | null }).preferential,
       transfer_to: (t as { transfer_to?: string | null }).transfer_to ?? null,
       procedure: (t as { procedure?: { name?: string } | null }).procedure?.name ?? "—",
       service_point:

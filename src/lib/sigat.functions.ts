@@ -341,19 +341,33 @@ export const callNextTicket = createServerFn({ method: "POST" })
       next = forCounter;
     }
 
-    // Caja: turnos derivados a caja (cualquier caja libre)
+    // Caja: derivados + tickets directos (C-) en una sola cola por llegada
     if (!next && kind === "cashier") {
-      const { data: forCashier } = await supabase
+      const { data: transferred } = await supabase
         .from("tickets")
-        .select("id")
+        .select("id, preferential, created_at")
         .eq("status", "waiting")
         .eq("day", today)
-        .eq("transfer_to", "cashier")
-        .order("preferential", { ascending: false })
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      next = forCashier;
+        .eq("transfer_to", "cashier");
+      let direct: { id: string; preferential?: boolean | null; created_at: string }[] = [];
+      if (procIds.length > 0) {
+        const { data } = await supabase
+          .from("tickets")
+          .select("id, preferential, created_at")
+          .eq("status", "waiting")
+          .eq("day", today)
+          .in("procedure_id", procIds)
+          .is("transfer_to", null);
+        direct = data ?? [];
+      }
+      const merged = [...(transferred ?? []), ...direct].sort((a, b) => {
+        const ap = a.preferential ? 1 : 0;
+        const bp = b.preferential ? 1 : 0;
+        if (bp !== ap) return bp - ap;
+        return String(a.created_at).localeCompare(String(b.created_at));
+      });
+      next = merged[0] ? { id: merged[0].id } : null;
+      if (!next) return null;
     }
 
     // Cola normal del puesto (sin derivaciones)

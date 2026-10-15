@@ -37,6 +37,7 @@ type TicketRow = {
   origin_service_point_id?: string | null;
   origin_operator_id?: string | null;
   transfer_to?: "counter" | "origin" | "ruat" | "cashier" | null;
+  preferential?: boolean;
   service_point?: { name: string; kind?: string } | null;
 };
 
@@ -361,18 +362,34 @@ function OperatorPage() {
 
       <div className="grid grid-cols-3 gap-2 md:gap-4">
         <Stat label="En espera" value={queueCount} />
-        <Stat label="Mi turno" value={myCalling ? <TicketCodeView code={myCalling.code} /> : "—"} highlight />
+        <Stat
+          label="Mi turno"
+          value={myCalling ? <TicketCodeView code={myCalling.code} /> : "—"}
+          highlight
+          priority={!!myCalling?.preferential}
+        />
         <Stat label="Estado" value={myCalling ? (myCalling.status === "calling" ? "Llamando" : "Atención") : "Libre"} />
       </div>
 
       {myCalling ? (
-        <div className="rounded-2xl border-2 border-primary/40 bg-gradient-to-b from-primary/5 to-transparent p-4 md:rounded-3xl md:p-8">
+        <div className={`rounded-2xl border-2 p-4 md:rounded-3xl md:p-8 ${
+          myCalling.preferential
+            ? "border-sky-400 bg-gradient-to-b from-sky-50 to-transparent"
+            : "border-primary/40 bg-gradient-to-b from-primary/5 to-transparent"
+        }`}>
           <div className="text-center">
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground md:text-xs">Ticket actual</p>
-            <p className="mt-1 font-ticket text-6xl font-black leading-none text-primary md:mt-2 md:text-7xl">
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground md:text-xs">
+              {myCalling.preferential ? "Ticket preferente" : "Ticket actual"}
+            </p>
+            <p className={`mt-1 font-ticket text-6xl font-black leading-none md:mt-2 md:text-7xl ${
+              myCalling.preferential ? "text-sky-600" : "text-primary"
+            }`}>
               <TicketCodeView code={myCalling.code} />
             </p>
             <div className="mt-3 flex flex-wrap justify-center gap-1.5 text-xs md:mt-3 md:gap-2 md:text-sm">
+              {myCalling.preferential ? (
+                <span className="rounded-full bg-sky-100 px-2.5 py-1 font-medium text-sky-800 md:px-3">Prioridad</span>
+              ) : null}
               <span className="rounded-full bg-accent px-2.5 py-1 font-medium md:px-3">{myCalling.area?.name}</span>
               <span className="rounded-full bg-accent px-2.5 py-1 font-medium md:px-3">{myCalling.procedure?.name}</span>
               {myCalling.ci ? (
@@ -433,9 +450,16 @@ function OperatorPage() {
             </p>
           ) : (
             dayTickets.map((t) => (
-              <div key={t.id} className="rounded-2xl border border-border bg-card px-3.5 py-3">
+              <div key={t.id} className={`rounded-2xl border px-3.5 py-3 ${
+                t.preferential ? "border-sky-300 bg-sky-50" : "border-border bg-card"
+              }`}>
                 <div className="flex items-start justify-between gap-3">
-                  <span className="font-ticket text-xl font-bold text-primary"><TicketCodeView code={t.code} /></span>
+                  <span className={`font-ticket text-xl font-bold ${t.preferential ? "text-sky-600" : "text-primary"}`}>
+                    <TicketCodeView code={t.code} />
+                    {t.preferential ? (
+                      <span className="ml-2 align-middle text-[10px] font-semibold uppercase tracking-wide text-sky-700">Prioridad</span>
+                    ) : null}
+                  </span>
                   <StatusPill s={t.status} transferTo={t.transfer_to} />
                 </div>
                 <p className="mt-1 text-sm font-medium leading-snug">{t.procedure?.name ?? "—"}</p>
@@ -457,8 +481,13 @@ function OperatorPage() {
             </thead>
             <tbody>
               {dayTickets.map((t) => (
-                <tr key={t.id} className="border-t border-border">
-                  <td className="px-4 py-2 font-ticket font-bold"><TicketCodeView code={t.code} /></td>
+                <tr key={t.id} className={`border-t ${t.preferential ? "border-sky-200 bg-sky-50" : "border-border"}`}>
+                  <td className={`px-4 py-2 font-ticket font-bold ${t.preferential ? "text-sky-600" : ""}`}>
+                    <TicketCodeView code={t.code} />
+                    {t.preferential ? (
+                      <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-sky-700">Prioridad</span>
+                    ) : null}
+                  </td>
                   <td className="px-4 py-2">{t.procedure?.name}</td>
                   <td className="px-4 py-2"><StatusPill s={t.status} transferTo={t.transfer_to} /></td>
                   <td className="px-4 py-2 text-muted-foreground">{t.service_point?.name ?? "—"}</td>
@@ -472,11 +501,15 @@ function OperatorPage() {
   );
 }
 
-function Stat({ label, value, highlight }: { label: string; value: React.ReactNode; highlight?: boolean }) {
+function Stat({ label, value, highlight, priority }: { label: string; value: React.ReactNode; highlight?: boolean; priority?: boolean }) {
   return (
-    <div className={`rounded-xl border border-border bg-card p-3 md:rounded-2xl md:p-5 ${highlight ? "border-primary/30 bg-primary/5" : ""}`}>
+    <div className={`rounded-xl border bg-card p-3 md:rounded-2xl md:p-5 ${
+      priority ? "border-sky-400 bg-sky-50" : highlight ? "border-primary/30 bg-primary/5" : "border-border"
+    }`}>
       <p className="text-[9px] uppercase tracking-widest text-muted-foreground md:text-xs">{label}</p>
-      <p className={`mt-0.5 font-extrabold leading-none md:mt-1 ${highlight ? "font-ticket text-2xl text-primary md:text-3xl" : "text-xl md:text-3xl"}`}>
+      <p className={`mt-0.5 font-extrabold leading-none md:mt-1 ${
+        highlight ? `font-ticket text-2xl md:text-3xl ${priority ? "text-sky-600" : "text-primary"}` : "text-xl md:text-3xl"
+      }`}>
         {value}
       </p>
     </div>
