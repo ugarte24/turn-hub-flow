@@ -30,7 +30,7 @@ import {
 } from "@/lib/desktop-notify";
 import { toast } from "sonner";
 import {
-  PhoneCall, RefreshCcw, UserX, CheckCircle2, XCircle, Building2, ArrowRightLeft, Undo2, Bell, Banknote, Users,
+  PhoneCall, RefreshCcw, UserX, CheckCircle2, Building2, ArrowRightLeft, Undo2, Bell, Banknote, Users,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/operator")({
@@ -464,7 +464,6 @@ function OperatorPage() {
 
           <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2 md:mt-6 md:grid-cols-3">
             <ActionBtn onClick={() => doUpdate.mutate({ id: myCalling.id, status: "calling" })} icon={RefreshCcw} label="Repetir llamado" />
-            <ActionBtn onClick={() => setHandoffOpen(true)} icon={Users} label="Pasar a operador" />
             {spKind === "ruat" && (
               <ActionBtn
                 onClick={() => doTransfer.mutate(myCalling.id)}
@@ -479,6 +478,7 @@ function OperatorPage() {
                 label={doTransferCashier.isPending ? "Derivando..." : "Derivar a caja"}
               />
             )}
+            <ActionBtn variant="handoff" onClick={() => setHandoffOpen(true)} icon={Users} label="Pasar a operador" />
             {canTransferToRuat && (
               <ActionBtn
                 onClick={() => doReturn.mutate(myCalling.id)}
@@ -488,7 +488,6 @@ function OperatorPage() {
             )}
             <ActionBtn variant="success" onClick={() => doUpdate.mutate({ id: myCalling.id, status: "finished" })} icon={CheckCircle2} label="Finalizar" />
             <ActionBtn variant="warning" onClick={() => doUpdate.mutate({ id: myCalling.id, status: "absent" })} icon={UserX} label="Ausente" />
-            <ActionBtn variant="destructive" onClick={() => doUpdate.mutate({ id: myCalling.id, status: "cancelled" })} icon={XCircle} label="Cancelar" />
           </div>
         </div>
       ) : (
@@ -626,12 +625,13 @@ function Stat({ label, value, highlight, priority }: { label: string; value: Rea
   );
 }
 
-function ActionBtn({ onClick, icon: Icon, label, primary, variant }: { onClick: () => void; icon: React.ComponentType<{ className?: string }>; label: string; primary?: boolean; variant?: "success" | "warning" | "destructive" }) {
+function ActionBtn({ onClick, icon: Icon, label, primary, variant }: { onClick: () => void; icon: React.ComponentType<{ className?: string }>; label: string; primary?: boolean; variant?: "success" | "warning" | "destructive" | "handoff" }) {
   const cls =
     primary ? "bg-gradient-primary text-primary-foreground shadow-elegant hover:brightness-105"
     : variant === "success" ? "bg-success text-success-foreground hover:brightness-105"
     : variant === "warning" ? "bg-warning text-warning-foreground hover:brightness-105"
     : variant === "destructive" ? "bg-destructive text-destructive-foreground hover:brightness-105"
+    : variant === "handoff" ? "bg-indigo-600 text-white hover:bg-indigo-500"
     : "border border-border bg-background hover:bg-accent";
   return (
     <button
