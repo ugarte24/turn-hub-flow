@@ -3,10 +3,10 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { CheckCircle2, Printer, TicketPlus, X } from "lucide-react";
+import { Ban, CheckCircle2, Printer, TicketPlus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAreas, fetchProcedures, type Area, type Procedure } from "@/lib/sigat-queries";
-import { generateTicketAsStaff } from "@/lib/sigat.functions";
+import { cancelTicketAsStaff, generateTicketAsStaff } from "@/lib/sigat.functions";
 import { formatTicketCode, formatTicketCodeHtml, TicketCodeView } from "@/lib/ticket-code";
 import { todayLaPaz } from "@/lib/date";
 import {
@@ -23,6 +23,7 @@ export const Route = createFileRoute("/_authenticated/host")({
 
 type GeneratedTicket = {
   id: string; code: string; ci?: string; created_at?: string;
+  status?: string;
   preferential?: boolean;
   area?: Area | null; procedure?: Procedure | null;
 };
@@ -235,6 +236,7 @@ function HostPage() {
 function HostForm({ userId }: { userId: string }) {
   const qc = useQueryClient();
   const genFn = useServerFn(generateTicketAsStaff);
+  const cancelFn = useServerFn(cancelTicketAsStaff);
   const [areaId, setAreaId] = useState<string | null>(null);
   const [procedureId, setProcedureId] = useState<string | null>(null);
   const [preferential, setPreferential] = useState(false);
@@ -324,6 +326,29 @@ function HostForm({ userId }: { userId: string }) {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const cancelTicket = useMutation({
+    mutationFn: async (ticket: GeneratedTicket) => {
+      const res = await cancelFn({ data: { ticketId: ticket.id } });
+      return { ...res, code: ticket.code };
+    },
+    onSuccess: (res, ticket) => {
+      toast.success(`Turno ${formatTicketCode(res.code)} anulado`);
+      if (lastTicket?.id === ticket.id) setLastTicket(null);
+      void qc.invalidateQueries({ queryKey: ["host_recent_tickets"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  function askCancel(t: GeneratedTicket) {
+    if (t.status && t.status !== "waiting") {
+      toast.error("Solo se puede anular un turno que aún está en espera");
+      return;
+    }
+    const code = formatTicketCode(t.code);
+    if (!window.confirm(`¿Anular el turno ${code}? Solo si todavía está en espera.`)) return;
+    cancelTicket.mutate(t);
+  }
 
   const canGenerate = !!areaId && !!procedureId && !generate.isPending;
 
@@ -418,6 +443,19 @@ function HostForm({ userId }: { userId: string }) {
                       <span className="truncate text-xs text-muted-foreground">
                         {t.procedure?.name ?? "—"}
                       </span>
+                      {t.status === "cancelled" ? (
+                        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-destructive">Anulado</span>
+                      ) : t.status === "waiting" ? (
+                        <button
+                          type="button"
+                          aria-label={`Anular ${formatTicketCode(t.code)}`}
+                          disabled={cancelTicket.isPending}
+                          onClick={() => askCancel(t)}
+                          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-destructive/40 text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                        >
+                          <Ban className="h-3.5 w-3.5" />
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         aria-label={`Imprimir ${formatTicketCode(t.code)}`}
@@ -521,6 +559,17 @@ function HostForm({ userId }: { userId: string }) {
                       ? "Imprimir (RawBT)"
                       : "Imprimir ticket"}
                 </button>
+                {(lastTicket.status ?? "waiting") === "waiting" && (
+                  <button
+                    type="button"
+                    disabled={cancelTicket.isPending}
+                    onClick={() => askCancel(lastTicket)}
+                    className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-destructive/40 px-4 py-3 font-semibold text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                  >
+                    <Ban className="h-4 w-4" />
+                    {cancelTicket.isPending ? "Anulando..." : "Anular turno"}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setLastTicket(null)}

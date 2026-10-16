@@ -143,6 +143,38 @@ export const generateTicketAsStaff = createServerFn({ method: "POST" })
     return full;
   });
 
+export const cancelTicketAsStaff = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { ticketId: string }) => z.object({ ticketId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const [{ data: isHost }, { data: isAdmin }] = await Promise.all([
+      supabase.rpc("has_role", { _user_id: userId, _role: "host" }),
+      supabase.rpc("has_role", { _user_id: userId, _role: "admin" }),
+    ]);
+    if (!isHost && !isAdmin) throw new Error("Solo el personal de apoyo puede anular turnos");
+
+    const { data: ticket, error: tErr } = await supabase
+      .from("tickets")
+      .select("id, status, created_by, code")
+      .eq("id", data.ticketId)
+      .maybeSingle();
+    if (tErr || !ticket) throw new Error("Ticket no encontrado");
+    if ((ticket as { created_by?: string | null }).created_by !== userId) {
+      throw new Error("Solo podés anular turnos que generaste vos");
+    }
+    if (ticket.status !== "waiting") {
+      throw new Error("Solo se puede anular un turno que aún está en espera");
+    }
+
+    const { error } = await supabase.rpc("cancel_ticket", {
+      _ticket_id: data.ticketId,
+      _device_id: null,
+    } as never);
+    if (error) throw new Error(error.message);
+    return { ok: true, code: ticket.code as string };
+  });
+
 /** Latest finished ticket today on this device that has not been rated yet. */
 export const findRateableTicketByDevice = createServerFn({ method: "POST" }).handler(async () => {
   const deviceId = getDeviceId();
