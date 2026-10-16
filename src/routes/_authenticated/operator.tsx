@@ -343,6 +343,14 @@ function OperatorPage() {
     ? originReturnLabel(originDeskName)
     : "Derivar a RUAT / Jefe";
   const returnOriginPendingLabel = myCalling?.origin_service_point_id ? "Devolviendo..." : "Derivando...";
+  const handoffLabel =
+    spKind === "counter" ? "Pasar a ventanilla"
+    : spKind === "cashier" ? "Pasar a caja"
+    : "Pasar a operador";
+  const handoffEmpty =
+    spKind === "counter" ? "No hay ventanillas libres."
+    : spKind === "cashier" ? "No hay cajas libres."
+    : "No hay operadores libres del mismo tipo.";
 
   if (sps.isLoading) {
     return (
@@ -478,7 +486,6 @@ function OperatorPage() {
                 label={doTransferCashier.isPending ? "Derivando..." : "Derivar a caja"}
               />
             )}
-            <ActionBtn variant="handoff" onClick={() => setHandoffOpen(true)} icon={Users} label="Pasar a operador" />
             {canTransferToRuat && (
               <ActionBtn
                 onClick={() => doReturn.mutate(myCalling.id)}
@@ -486,6 +493,8 @@ function OperatorPage() {
                 label={doReturn.isPending ? returnOriginPendingLabel : returnOriginLabel}
               />
             )}
+            {spKind === "cashier" ? <div className="hidden md:block" aria-hidden /> : null}
+            <ActionBtn variant="handoff" onClick={() => setHandoffOpen(true)} icon={Users} label={handoffLabel} />
             <ActionBtn variant="success" onClick={() => doUpdate.mutate({ id: myCalling.id, status: "finished" })} icon={CheckCircle2} label="Finalizar" />
             <ActionBtn variant="warning" onClick={() => doUpdate.mutate({ id: myCalling.id, status: "absent" })} icon={UserX} label="Ausente" />
           </div>
@@ -565,7 +574,7 @@ function OperatorPage() {
       <Dialog open={handoffOpen} onOpenChange={setHandoffOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Pasar a operador</DialogTitle>
+            <DialogTitle>{handoffLabel}</DialogTitle>
             <DialogDescription>
               El turno pasa enseguida al puesto elegido y se anuncia en la TV.
             </DialogDescription>
@@ -575,7 +584,7 @@ function OperatorPage() {
           ) : idlePeers.isError ? (
             <p className="text-sm text-destructive">{(idlePeers.error as Error).message}</p>
           ) : (idlePeers.data ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">No hay operadores libres del mismo tipo.</p>
+            <p className="text-sm text-muted-foreground">{handoffEmpty}</p>
           ) : (
             <ul className="space-y-2">
               {(idlePeers.data ?? []).map((peer) => (
