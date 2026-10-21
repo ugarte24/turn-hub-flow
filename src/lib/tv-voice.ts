@@ -169,7 +169,11 @@ function resumeSpeechSynthesis(synth: SpeechSynthesis) {
 }
 
 /** Chrome/Edge: cancelar y hablar en el mismo tick suele tragarse el audio. */
-export function speakTvUtterance(text: string, settings: TvVoiceSettings): Promise<void> {
+export function speakTvUtterance(
+  text: string,
+  settings: TvVoiceSettings,
+  opts?: { interrupt?: boolean },
+): Promise<void> {
   return new Promise((resolve) => {
     try {
       if (typeof window === "undefined" || !window.speechSynthesis) {
@@ -183,6 +187,7 @@ export function speakTvUtterance(text: string, settings: TvVoiceSettings): Promi
       let started = false;
       let triedFallback = false;
       const timers: number[] = [];
+      const interrupt = opts?.interrupt === true;
 
       const done = () => {
         if (settled) return;
@@ -211,10 +216,12 @@ export function speakTvUtterance(text: string, settings: TvVoiceSettings): Promi
         synth.speak(msg);
       };
 
-      try {
-        synth.cancel();
-      } catch {
-        /* ignore */
+      if (interrupt) {
+        try {
+          synth.cancel();
+        } catch {
+          /* ignore */
+        }
       }
 
       timers.push(
@@ -224,18 +231,20 @@ export function speakTvUtterance(text: string, settings: TvVoiceSettings): Promi
             window.setTimeout(() => {
               if (settled || started) return;
               triedFallback = true;
-              try {
-                synth.cancel();
-              } catch {
-                /* ignore */
+              if (interrupt) {
+                try {
+                  synth.cancel();
+                } catch {
+                  /* ignore */
+                }
               }
-              timers.push(window.setTimeout(() => run(false), 50));
-            }, 800),
+              timers.push(window.setTimeout(() => run(false), interrupt ? 50 : 200));
+            }, interrupt ? 800 : 2_000),
           );
-        }, 60),
+        }, interrupt ? 60 : 80),
       );
 
-      timers.push(window.setTimeout(done, 12_000));
+      timers.push(window.setTimeout(done, 25_000));
     } catch {
       resolve();
     }

@@ -27,6 +27,7 @@ import { Route as ApiLegacyCallNextRouteImport } from './routes/api/legacy/call-
 import { Route as ApiLegacyLoginRouteImport } from './routes/api/legacy/login'
 import { Route as ApiLegacyStateRouteImport } from './routes/api/legacy/state'
 import { Route as ApiLegacyTicketStatusRouteImport } from './routes/api/legacy/ticket-status'
+import { Route as ApiLegacyHandoffRouteImport } from './routes/api/legacy/handoff'
 import { Route as ApiLegacyTransferRouteImport } from './routes/api/legacy/transfer'
 
 const IndexRoute = IndexRouteImport.update({
@@ -121,6 +122,11 @@ const ApiLegacyTicketStatusRoute = ApiLegacyTicketStatusRouteImport.update({
   path: '/api/legacy/ticket-status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiLegacyHandoffRoute = ApiLegacyHandoffRouteImport.update({
+  id: '/api/legacy/handoff',
+  path: '/api/legacy/handoff',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiLegacyTransferRoute = ApiLegacyTransferRouteImport.update({
   id: '/api/legacy/transfer',
   path: '/api/legacy/transfer',
@@ -144,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/api/legacy/login': typeof ApiLegacyLoginRoute
   '/api/legacy/state': typeof ApiLegacyStateRoute
   '/api/legacy/ticket-status': typeof ApiLegacyTicketStatusRoute
+  '/api/legacy/handoff': typeof ApiLegacyHandoffRoute
   '/api/legacy/transfer': typeof ApiLegacyTransferRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
 }
@@ -163,6 +170,7 @@ export interface FileRoutesByTo {
   '/api/legacy/login': typeof ApiLegacyLoginRoute
   '/api/legacy/state': typeof ApiLegacyStateRoute
   '/api/legacy/ticket-status': typeof ApiLegacyTicketStatusRoute
+  '/api/legacy/handoff': typeof ApiLegacyHandoffRoute
   '/api/legacy/transfer': typeof ApiLegacyTransferRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
 }
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/api/legacy/login': typeof ApiLegacyLoginRoute
   '/api/legacy/state': typeof ApiLegacyStateRoute
   '/api/legacy/ticket-status': typeof ApiLegacyTicketStatusRoute
+  '/api/legacy/handoff': typeof ApiLegacyHandoffRoute
   '/api/legacy/transfer': typeof ApiLegacyTransferRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
@@ -207,6 +216,7 @@ export interface FileRouteTypes {
     | '/api/legacy/login'
     | '/api/legacy/state'
     | '/api/legacy/ticket-status'
+    | '/api/legacy/handoff'
     | '/api/legacy/transfer'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
@@ -226,6 +236,7 @@ export interface FileRouteTypes {
     | '/api/legacy/login'
     | '/api/legacy/state'
     | '/api/legacy/ticket-status'
+    | '/api/legacy/handoff'
     | '/api/legacy/transfer'
     | '/admin'
   id:
@@ -247,6 +258,7 @@ export interface FileRouteTypes {
     | '/api/legacy/login'
     | '/api/legacy/state'
     | '/api/legacy/ticket-status'
+    | '/api/legacy/handoff'
     | '/api/legacy/transfer'
     | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
@@ -262,6 +274,7 @@ export interface RootRouteChildren {
   ApiLegacyLoginRoute: typeof ApiLegacyLoginRoute
   ApiLegacyStateRoute: typeof ApiLegacyStateRoute
   ApiLegacyTicketStatusRoute: typeof ApiLegacyTicketStatusRoute
+  ApiLegacyHandoffRoute: typeof ApiLegacyHandoffRoute
   ApiLegacyTransferRoute: typeof ApiLegacyTransferRoute
 }
 
@@ -393,6 +406,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiLegacyTicketStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/legacy/handoff': {
+      id: '/api/legacy/handoff'
+      path: '/api/legacy/handoff'
+      fullPath: '/api/legacy/handoff'
+      preLoaderRoute: typeof ApiLegacyHandoffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/legacy/transfer': {
       id: '/api/legacy/transfer'
       path: '/api/legacy/transfer'
@@ -448,6 +468,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLegacyLoginRoute: ApiLegacyLoginRoute,
   ApiLegacyStateRoute: ApiLegacyStateRoute,
   ApiLegacyTicketStatusRoute: ApiLegacyTicketStatusRoute,
+  ApiLegacyHandoffRoute: ApiLegacyHandoffRoute,
   ApiLegacyTransferRoute: ApiLegacyTransferRoute,
 }
 export const routeTree = rootRouteImport

@@ -633,6 +633,60 @@ input:focus {
   border-color: #9a2f24;
   color: #fff;
 }
+.btn-handoff {
+  background: #c7d2fe;
+  border-color: #a5b4fc;
+  color: #312e81;
+}
+.handoff-overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  background: rgba(0,0,0,0.45);
+  padding: 24px 16px;
+}
+.handoff-box {
+  max-width: 420px;
+  margin: 40px auto 0;
+  background: #fff;
+  border: 1px solid #c5d5cd;
+  border-radius: 12px;
+  padding: 16px;
+}
+.handoff-title {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+}
+.handoff-hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #5a7368;
+}
+.handoff-list {
+  margin-bottom: 12px;
+}
+.handoff-empty {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #5a7368;
+}
+.handoff-peer {
+  margin-bottom: 8px;
+  text-align: left;
+}
+.handoff-peer strong {
+  display: block;
+}
+.handoff-peer span {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #5a7368;
+}
 .btn-ghost {
   background: #fff;
   border-color: #c5d5cd;

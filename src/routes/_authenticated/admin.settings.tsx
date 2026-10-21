@@ -352,7 +352,7 @@ function SettingsPage() {
                     voiceName: voiceLang === "es-MX" ? "Dalia" : "",
                     voiceLang,
                     rate: voiceRate,
-                  }).catch(() => toast.error("No se pudo reproducir la prueba"));
+                  }, { interrupt: true }).catch(() => toast.error("No se pudo reproducir la prueba"));
                 }}
                 className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-accent sm:w-auto"
               >

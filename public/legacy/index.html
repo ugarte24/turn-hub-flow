@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SIGAT Operador (Win7)</title>
   <link rel="icon" href="/favicon.png" type="image/png" />
-  <link rel="stylesheet" href="/legacy/style.css?v=1.0.89" />
+  <link rel="stylesheet" href="/legacy/style.css?v=1.0.108" />
 </head>
 <body>
   <div id="boot-error" class="boot-error" style="display:none;margin:16px;padding:12px;background:#fdecea;border:1px solid #f0c2bc;color:#9a2f24;font-family:Tahoma,Arial,sans-serif;"></div>
@@ -108,9 +108,18 @@
               <button id="transfer-counter-btn" type="button" class="btn" hidden>Derivar a ventanilla</button>
               <button id="transfer-cashier-btn" type="button" class="btn" hidden>Derivar a caja</button>
               <button id="transfer-origin-btn" type="button" class="btn" hidden>Devolver a RUAT</button>
+              <button id="handoff-btn" type="button" class="btn btn-handoff">Pasar a operador</button>
               <button id="finish-btn" type="button" class="btn btn-ok">Finalizar</button>
               <button id="absent-btn" type="button" class="btn btn-warn">Ausente</button>
               <button id="cancel-btn" type="button" class="btn btn-danger">Cancelar</button>
+            </div>
+            <div id="handoff-overlay" class="handoff-overlay" hidden>
+              <div class="handoff-box">
+                <p id="handoff-title" class="handoff-title">Pasar a operador</p>
+                <p class="handoff-hint">El turno pasa enseguida al puesto elegido y se anuncia en la TV.</p>
+                <div id="handoff-list" class="handoff-list"></div>
+                <button id="handoff-close" type="button" class="btn btn-block">Cerrar</button>
+              </div>
             </div>
           </div>
 
@@ -138,6 +147,6 @@
       </div>
     </section>
   </div>
-  <script src="/legacy/app.js?v=1.0.89"></script>
+  <script src="/legacy/app.js?v=1.0.108"></script>
 </body>
 </html>

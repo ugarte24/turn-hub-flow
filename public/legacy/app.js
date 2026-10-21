@@ -2,6 +2,8 @@
 (function () {
   var TOKEN_KEY = "sigat_legacy_token";
   var pollTimer = null;
+  var lastIdlePeers = [];
+  var lastHandoffLabel = "Pasar a operador";
 
   function $(id) {
     return document.getElementById(id);
@@ -192,6 +194,11 @@
     if (actions.returnLabel) {
       $("transfer-origin-btn").textContent = actions.returnLabel;
     }
+    lastHandoffLabel = actions.handoffLabel || "Pasar a operador";
+    lastIdlePeers = state.idlePeers || [];
+    var handoffBtn = $("handoff-btn");
+    if (handoffBtn) handoffBtn.textContent = lastHandoffLabel;
+    show(handoffBtn, !!actions.canHandoff);
 
     var mine = state.myCalling;
     if (mine) {
@@ -214,6 +221,8 @@
       show($("transfer-counter-btn"), false);
       show($("transfer-cashier-btn"), false);
       show($("transfer-origin-btn"), false);
+      show($("handoff-btn"), false);
+      show($("handoff-overlay"), false);
     }
 
     var tbody = $("day-tbody");
@@ -443,6 +452,73 @@
   bindClick("transfer-origin-btn", function () {
     var label = $("transfer-origin-btn").textContent || "Devolver";
     doTransfer("origin", label);
+  });
+
+  function closeHandoff() {
+    show($("handoff-overlay"), false);
+  }
+
+  function openHandoff() {
+    var title = $("handoff-title");
+    if (title) title.textContent = lastHandoffLabel;
+    var list = $("handoff-list");
+    if (!list) return;
+    list.innerHTML = "";
+    if (!lastIdlePeers.length) {
+      var empty = document.createElement("p");
+      empty.className = "handoff-empty";
+      empty.textContent = "No hay operadores libres del mismo tipo.";
+      list.appendChild(empty);
+    } else {
+      for (var i = 0; i < lastIdlePeers.length; i++) {
+        (function (peer) {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "btn btn-block handoff-peer";
+          btn.innerHTML =
+            "<strong>" + escapeHtml(peer.servicePointName) + "</strong>" +
+            (peer.operatorName && peer.operatorName !== peer.servicePointName
+              ? "<span>" + escapeHtml(peer.operatorName) + "</span>"
+              : "");
+          btn.onclick = function () {
+            doHandoff(peer.servicePointId, peer.servicePointName);
+          };
+          list.appendChild(btn);
+        })(lastIdlePeers[i]);
+      }
+    }
+    show($("handoff-overlay"), true);
+  }
+
+  function doHandoff(targetServicePointId, targetLabel) {
+    var id = currentTicketId();
+    if (!id) {
+      setMsg("No hay turno activo", true);
+      return;
+    }
+    closeHandoff();
+    setMsg(lastHandoffLabel + "...", false);
+    api("/api/legacy/handoff", {
+      method: "POST",
+      body: { ticketId: id, targetServicePointId: targetServicePointId },
+    })
+      .then(function () {
+        return api("/api/legacy/state");
+      })
+      .then(function (state) {
+        renderState(state);
+        setMsg("Pasado a " + targetLabel, false);
+      })
+      .catch(function (ex) {
+        setMsg(ex.message || "Error al pasar el turno", true);
+      });
+  }
+
+  bindClick("handoff-btn", function () {
+    openHandoff();
+  });
+  bindClick("handoff-close", function () {
+    closeHandoff();
   });
 
   // Si es celular, mandar a la app moderna

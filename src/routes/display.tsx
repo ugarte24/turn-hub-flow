@@ -180,15 +180,20 @@ function setHighlightingCallId(id: string | null) {
   for (const fn of highlightListeners) fn(id);
 }
 
-function waitSpeechIdle(maxMs = 2_500): Promise<void> {
+function waitSpeechIdle(maxMs = 25_000): Promise<void> {
   return new Promise((resolve) => {
     const started = Date.now();
     const tick = () => {
       try {
         const synth = window.speechSynthesis;
         if (synth.paused) synth.resume();
-        const busy = synth.speaking || synth.pending;
-        if (!busy || Date.now() - started > maxMs) {
+        const busy = synth.speaking || synth.pending || speakInFlight;
+        if (!busy) {
+          resolve();
+          return;
+        }
+        if (Date.now() - started > maxMs) {
+          // Solo cortar si quedó colgado; nunca interrumpir un anuncio en curso
           if (busy && !speakInFlight) {
             try { synth.cancel(); } catch { /* ignore */ }
           }
@@ -207,15 +212,18 @@ function waitSpeechIdle(maxMs = 2_500): Promise<void> {
 
 function speakOnce(text: string): Promise<void> {
   return new Promise((resolve) => {
+    const start = () => {
+      speakInFlight = true;
+      void speakTvUtterance(text, tvVoiceConfig, { interrupt: false }).finally(() => {
+        speakInFlight = false;
+        resolve();
+      });
+    };
     if (speakInFlight) {
-      resolve();
+      void waitSpeechIdle().then(start);
       return;
     }
-    speakInFlight = true;
-    void speakTvUtterance(text, tvVoiceConfig).finally(() => {
-      speakInFlight = false;
-      resolve();
-    });
+    start();
   });
 }
 
@@ -229,7 +237,7 @@ async function playAnnounceSequence(ticketId: string, code: string, desk: string
     await sleep(550);
     await speakOnce(`${code} pasar a ${desk}`);
     await waitSpeechIdle();
-    await sleep(700);
+    await sleep(400);
   } finally {
     setHighlightingCallId(null);
   }
