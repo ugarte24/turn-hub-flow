@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -308,11 +308,23 @@ function HostForm({ userId }: { userId: string }) {
   });
   const recent = recentQ.data ?? [];
 
+  const generateKeyRef = useRef<string | null>(null);
+
   const generate = useMutation({
-    mutationFn: async () => genFn({
-      data: { areaId: areaId!, procedureId: procedureId!, preferential },
-    }),
+    mutationFn: async () => {
+      if (!generateKeyRef.current) generateKeyRef.current = crypto.randomUUID();
+      return genFn({
+        data: {
+          areaId: areaId!,
+          procedureId: procedureId!,
+          preferential,
+          idempotencyKey: generateKeyRef.current,
+        },
+      });
+    },
+    retry: 0,
     onSuccess: (data) => {
+      generateKeyRef.current = null;
       const row = data as GeneratedTicket;
       const full: GeneratedTicket = {
         ...row,
@@ -419,7 +431,10 @@ function HostForm({ userId }: { userId: string }) {
           <button
             type="button"
             disabled={!canGenerate}
-            onClick={() => generate.mutate()}
+            onClick={() => {
+              if (generate.isPending) return;
+              generate.mutate();
+            }}
             className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-primary py-3.5 text-lg font-semibold text-primary-foreground shadow-elegant transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <TicketPlus className="h-5 w-5" />

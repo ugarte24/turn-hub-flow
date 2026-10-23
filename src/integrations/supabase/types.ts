@@ -383,6 +383,7 @@ export type Database = {
           _ci?: string | null
           _created_by?: string | null
           _device_id?: string | null
+          _idempotency_key?: string | null
           _procedure_id: string
         }
         Returns: {

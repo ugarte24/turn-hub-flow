@@ -83,7 +83,7 @@ export function listSpeechVoices(): SpeechSynthesisVoice[] {
   }
 }
 
-export function waitForSpeechVoices(maxMs = 600): Promise<SpeechSynthesisVoice[]> {
+export function waitForSpeechVoices(maxMs = 2_500): Promise<SpeechSynthesisVoice[]> {
   const existing = listSpeechVoices();
   if (existing.length) return Promise.resolve(existing);
   if (typeof window === "undefined" || !window.speechSynthesis) return Promise.resolve([]);
@@ -114,35 +114,47 @@ export function subscribeSpeechVoices(onChange: (voices: SpeechSynthesisVoice[])
 }
 
 function localeFallbackChain(lang: string): string[] {
-  const wanted = normalizeVoiceLang(lang) || "es-es";
+  const wanted = normalizeVoiceLang(lang) || "es-mx";
   const latam = [
     "es-mx", "es-us", "es-419", "es-ar", "es-co", "es-cl", "es-pe", "es-bo",
     "es-ve", "es-ec", "es-uy", "es-py", "es-cr", "es-pa", "es-gt", "es-hn",
     "es-ni", "es-sv", "es-do", "es-cu", "es-pr",
   ];
-  const chain = wanted === "es-es"
-    ? ["es-es", "es"]
-    : [wanted, ...latam.filter((x) => x !== wanted), "es", "es-es"];
-  return [...new Set(chain)];
+  if (wanted === "es-es") return ["es-es"];
+  return [...new Set([wanted, ...latam.filter((x) => x !== wanted)])];
+}
+
+function wantsSpainSpanish(settings: TvVoiceSettings): boolean {
+  return normalizeVoiceLang(settings.voiceLang || "") === "es-es";
+}
+
+function latamVoicePool(spanish: SpeechSynthesisVoice[]): SpeechSynthesisVoice[] {
+  const latam = spanish.filter(isLatinAmericanSpanish);
+  if (latam.length) return latam;
+  return spanish.filter((v) => normalizeVoiceLang(v.lang) !== "es-es");
 }
 
 export function findSpeechVoice(settings: TvVoiceSettings): SpeechSynthesisVoice | null {
-  const voices = listSpeechVoices().filter(isSpanishVoice);
-  if (!voices.length) return listSpeechVoices()[0] ?? null;
+  const spanish = listSpeechVoices().filter(isSpanishVoice);
+  const pool = wantsSpainSpanish(settings)
+    ? spanish.filter((v) => !isLatinAmericanSpanish(v))
+    : latamVoicePool(spanish);
+  const search = pool.length ? pool : (wantsSpainSpanish(settings) ? spanish : latamVoicePool(spanish));
+  if (!search.length) return null;
 
   const wantedName = settings.voiceName?.trim();
   if (wantedName) {
-    const byName = voices.find((v) => v.name.toLowerCase().includes(wantedName.toLowerCase()));
+    const byName = search.find((v) => v.name.toLowerCase().includes(wantedName.toLowerCase()));
     if (byName) return byName;
   }
 
   for (const lang of localeFallbackChain(settings.voiceLang || DEFAULT_TV_VOICE.voiceLang)) {
-    const match = voices.find((v) => normalizeVoiceLang(v.lang) === lang);
+    const match = search.find((v) => normalizeVoiceLang(v.lang) === lang);
     if (match) return match;
-    const prefix = voices.find((v) => normalizeVoiceLang(v.lang).startsWith(lang));
+    const prefix = search.find((v) => normalizeVoiceLang(v.lang).startsWith(lang));
     if (prefix) return prefix;
   }
-  return voices[0] ?? null;
+  return search[0] ?? null;
 }
 
 /** Aplica voz y velocidad. Si hay voz del país, se usa; si no, el español más cercano. */
@@ -184,8 +196,6 @@ export function speakTvUtterance(
       resumeSpeechSynthesis(synth);
 
       let settled = false;
-      let started = false;
-      let triedFallback = false;
       const timers: number[] = [];
       const interrupt = opts?.interrupt === true;
 
@@ -196,21 +206,13 @@ export function speakTvUtterance(
         resolve();
       };
 
-      const run = (allowVoice: boolean) => {
+      const run = () => {
         if (settled) return;
         resumeSpeechSynthesis(synth);
         const msg = new SpeechSynthesisUtterance(text);
-        applyVoiceToUtterance(msg, settings, allowVoice);
-        msg.onstart = () => {
-          started = true;
-        };
+        applyVoiceToUtterance(msg, settings, true);
         msg.onend = done;
         msg.onerror = () => {
-          if (!started && allowVoice && !triedFallback) {
-            triedFallback = true;
-            run(false);
-            return;
-          }
           done();
         };
         synth.speak(msg);
@@ -224,26 +226,7 @@ export function speakTvUtterance(
         }
       }
 
-      timers.push(
-        window.setTimeout(() => {
-          run(true);
-          timers.push(
-            window.setTimeout(() => {
-              if (settled || started) return;
-              triedFallback = true;
-              if (interrupt) {
-                try {
-                  synth.cancel();
-                } catch {
-                  /* ignore */
-                }
-              }
-              timers.push(window.setTimeout(() => run(false), interrupt ? 50 : 200));
-            }, interrupt ? 800 : 2_000),
-          );
-        }, interrupt ? 60 : 80),
-      );
-
+      timers.push(window.setTimeout(run, interrupt ? 60 : 80));
       timers.push(window.setTimeout(done, 25_000));
     } catch {
       resolve();

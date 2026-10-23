@@ -234,8 +234,16 @@ export async function callNextForOperator(supabase: Db, userId: string, serviceP
     .eq("id", next.id)
     .eq("status", "waiting")
     .select("*, area:areas(*), procedure:procedures(*), service_point:service_points!service_point_id(*)")
-    .single();
-  if (error) throw new Error(error.message);
+    .maybeSingle();
+  if (error) {
+    if (error.code === "23505") {
+      throw new Error("Ya tenés un turno en atención. Finalizalo o marcalo ausente antes de llamar al siguiente.");
+    }
+    throw new Error(error.message);
+  }
+  if (!updated) {
+    throw new Error("Ese turno ya fue tomado. Volvé a pulsar «Llamar siguiente».");
+  }
   return updated;
 }
 

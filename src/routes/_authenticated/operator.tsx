@@ -205,6 +205,7 @@ function OperatorPage() {
 
   const callNext = useMutation({
     mutationFn: async () => callFn({ data: { servicePointId: spId! } }),
+    retry: 0,
     onSuccess: (t) => {
       if (!t) toast.info("No hay turnos en espera para este puesto");
       else {

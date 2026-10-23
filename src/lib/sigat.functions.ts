@@ -49,22 +49,41 @@ function publicClient() {
   });
 }
 
+/** generate_ticket con clave de idempotencia; si la RPC aún no tiene el parámetro, reintenta sin él. */
+async function rpcGenerateTicket(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sb: { rpc: (fn: string, args: any) => Promise<{ data: unknown; error: { message: string } | null }> },
+  args: Record<string, unknown>,
+) {
+  const first = await sb.rpc("generate_ticket", args);
+  if (!first.error) return first;
+  const msg = first.error.message ?? "";
+  if (args._idempotency_key && /Could not find the function|PGRST202|schema cache|idempotency/i.test(msg)) {
+    const rest = { ...args };
+    delete rest._idempotency_key;
+    return sb.rpc("generate_ticket", rest);
+  }
+  return first;
+}
+
 // ---------- PUBLIC: ticket generation ----------
 export const generateTicket = createServerFn({ method: "POST" })
-  .validator((d: { areaId: string; procedureId: string }) =>
+  .validator((d: { areaId: string; procedureId: string; idempotencyKey: string }) =>
     z.object({
       areaId: z.string().uuid(),
       procedureId: z.string().uuid(),
+      idempotencyKey: z.string().uuid(),
     }).parse(d),
   )
   .handler(async ({ data }) => {
     const sb = publicClient();
     const deviceId = getOrCreateDeviceId();
-    const { data: row, error } = await sb.rpc("generate_ticket", {
+    const { data: row, error } = await rpcGenerateTicket(sb, {
       _ci: "",
       _area_id: data.areaId,
       _procedure_id: data.procedureId,
       _device_id: deviceId,
+      _idempotency_key: data.idempotencyKey,
     });
     if (error) throw new Error(error.message);
     const ticket = (Array.isArray(row) ? row[0] : row) as { id?: string } | null;
@@ -100,11 +119,12 @@ export const findActiveTicketByDevice = createServerFn({ method: "POST" }).handl
 // ---------- HOST (Personal de apoyo): generate tickets on behalf of citizens ----------
 export const generateTicketAsStaff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((d: { areaId: string; procedureId: string; preferential?: boolean }) =>
+  .validator((d: { areaId: string; procedureId: string; preferential?: boolean; idempotencyKey: string }) =>
     z.object({
       areaId: z.string().uuid(),
       procedureId: z.string().uuid(),
       preferential: z.boolean().optional(),
+      idempotencyKey: z.string().uuid(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -116,12 +136,13 @@ export const generateTicketAsStaff = createServerFn({ method: "POST" })
     if (!isHost && !isAdmin) throw new Error("Solo el personal de apoyo puede usar esta función");
 
     // Sin _device_id: el mostrador puede generar varios turnos seguidos
-    const { data: row, error } = await supabase.rpc("generate_ticket", {
+    const { data: row, error } = await rpcGenerateTicket(supabase, {
       _ci: "",
       _area_id: data.areaId,
       _procedure_id: data.procedureId,
       _created_by: userId,
-    } as never);
+      _idempotency_key: data.idempotencyKey,
+    });
     if (error) throw new Error(error.message);
     const ticket = (Array.isArray(row) ? row[0] : row) as { id?: string } | null;
     if (!ticket?.id) return row;
@@ -436,8 +457,16 @@ export const callNextTicket = createServerFn({ method: "POST" })
       .eq("id", next.id)
       .eq("status", "waiting")
       .select("*, area:areas(*), procedure:procedures(*), service_point:service_points!service_point_id(*)")
-      .single();
-    if (error) throw new Error(error.message);
+      .maybeSingle();
+    if (error) {
+      if (error.code === "23505") {
+        throw new Error("Ya tenés un turno en atención. Finalizalo o marcalo ausente antes de llamar al siguiente.");
+      }
+      throw new Error(error.message);
+    }
+    if (!updated) {
+      throw new Error("Ese turno ya fue tomado. Volvé a pulsar «Llamar siguiente».");
+    }
     return updated;
   });
 

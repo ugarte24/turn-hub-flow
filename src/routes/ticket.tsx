@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -76,9 +76,22 @@ function TicketPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const generateKeyRef = useRef<string | null>(null);
+
   const generate = useMutation({
-    mutationFn: async () => genFn({ data: { areaId: areaId!, procedureId: procedureId! } }),
+    mutationFn: async () => {
+      if (!generateKeyRef.current) generateKeyRef.current = crypto.randomUUID();
+      return genFn({
+        data: {
+          areaId: areaId!,
+          procedureId: procedureId!,
+          idempotencyKey: generateKeyRef.current,
+        },
+      });
+    },
+    retry: 0,
     onSuccess: (data) => {
+      generateKeyRef.current = null;
       const row = data as ActiveTicket;
       setTicket({
         ...row,
